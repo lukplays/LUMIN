@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>LUMIN - Neon Arcade</title>
-    
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
         const firebaseConfig = {
             apiKey: "AIzaSyACsTGUuqymFd1emLyGp0uL7foTEiumH9k",
             authDomain: "neon-ball-lego.firebaseapp.com",
@@ -17,461 +16,413 @@
             messagingSenderId: "1001917014792",
             appId: "1:1001917014792:web:dcbcb583d05036f22002bd"
         };
-
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
+        const db  = getFirestore(app);
         window.saveScore = async (nick, score) => {
-            if(!nick || score <= 0) return;
-            try {
-                await addDoc(collection(db, "leaderboard"), { nick, score: Number(score), date: Date.now() });
-                window.loadLeaderboard();
-            } catch (e) { console.error("Firebase Save Error:", e); }
+            if (!nick || score <= 0) return;
+            try { await addDoc(collection(db,"leaderboard"),{nick,score:Number(score),date:Date.now()}); window.loadLeaderboard(); }
+            catch(e){ console.error("Firebase Save Error:",e); }
         };
-
         window.loadLeaderboard = async () => {
             try {
-                const q = query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(15));
+                const q = query(collection(db,"leaderboard"),orderBy("score","desc"),limit(15));
                 const snap = await getDocs(q);
                 const list = document.getElementById("lb-list");
-                if(!list) return; 
+                if(!list) return;
                 list.innerHTML = "";
                 snap.forEach(doc => {
-                    const d = doc.data();
-                    const isMe = (d.nick === window.playerNick);
-                    const style = isMe ? 'color: #ffd700; font-weight: bold; text-shadow: 0 0 8px #ffd700;' : '';
-                    list.innerHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:5px; ${style}">
-                        <span>${isMe ? '▶ ' : ''}${d.nick}</span> <span>${d.score}</span>
-                    </div>`;
+                    const d = doc.data(), isMe = (d.nick===window.playerNick);
+                    const s = isMe ? 'color:#ffd700;font-weight:bold;text-shadow:0 0 8px #ffd700;' : '';
+                    list.innerHTML += `<div style="display:flex;justify-content:space-between;margin-bottom:5px;${s}"><span>${isMe?'▶ ':''}${d.nick}</span><span>${d.score}</span></div>`;
                 });
-            } catch (e) { console.error("Load Leaderboard Error:", e); }
+            } catch(e){ console.error("Load Leaderboard Error:",e); }
         };
     </script>
 
     <style>
-        :root { --app-height: 100%; }
-        *, *::before, *::after { box-sizing: border-box; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        html, body { 
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: #050505; 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            font-family: 'Courier New', Courier, monospace; touch-action: manipulation; 
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: #050505;
+            font-family: 'Courier New', Courier, monospace;
         }
 
-        .dimmed { filter: brightness(0.3) blur(2px); transition: filter 0.5s ease; pointer-events: none; }
-        
-        #nick-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; touch-action: auto; }
-        #nick-input { background: #111; border: 2px solid #f0f; color: #fff; padding: 10px; font-size: 20px; text-align: center; outline: none; margin-bottom: 20px; touch-action: manipulation; width: 80%; max-width: 250px; }
-        #start-btn { background: #f0f; color: #fff; border: none; padding: 10px 30px; font-weight: bold; cursor: pointer; touch-action: manipulation; }
+        #nick-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.93);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 9999;
+        }
+        #nick-overlay h2 { color: #0ff; letter-spacing: 2px; font-size: 18px; margin-bottom: 20px; }
+        #nick-input {
+            background: #111; border: 2px solid #f0f; color: #fff;
+            padding: 12px; font-size: 20px; text-align: center;
+            outline: none; margin-bottom: 20px;
+            width: 80%; max-width: 260px; border-radius: 4px;
+        }
+        #start-btn {
+            background: #f0f; color: #fff; border: none;
+            padding: 12px 36px; font-size: 16px; font-weight: bold;
+            cursor: pointer; border-radius: 4px;
+            min-width: 140px; min-height: 48px;
+        }
 
-        /* Wrapper skalujący całą grę proporcjonalnie */
         #game-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            /* transform-origin ustawiamy dynamicznie przez JS */
-            transform-origin: top center;
+            position: absolute;
+            top: 0; left: 0;
+            transform-origin: top left;
         }
-        
-        #scoreboard { width: 400px; background: #000; border: 2px solid #444; border-bottom: none; display: flex; justify-content: space-around; padding: 10px 0; transition: filter 0.5s ease; flex-shrink: 0; }
+
+        #scoreboard {
+            width: 400px; background: #000;
+            border: 2px solid #444; border-bottom: none;
+            display: flex; justify-content: space-around;
+            padding: 10px 0; transition: filter 0.5s ease;
+        }
         .stat-box { text-align: center; }
         .label { font-size: 11px; display: block; text-transform: uppercase; letter-spacing: 2px; color: #aaa; margin-bottom: 2px; font-weight: bold; }
         #currentScore { color: #0ff; text-shadow: 0 0 12px #0ff; }
-        #bestScore { color: #f0f; text-shadow: 0 0 12px #f0f; }
+        #bestScore    { color: #f0f; text-shadow: 0 0 12px #f0f; }
         .value { font-size: 28px; font-weight: bold; }
-        
-        canvas { 
-            border: 2px solid #444; background-color: #000; 
-            display: block; transition: filter 0.5s ease; 
-            touch-action: none; -webkit-tap-highlight-color: transparent;
-            width: 400px; height: 600px;
+
+        #canvas-wrap { position: relative; width: 400px; height: 600px; }
+
+        canvas {
+            display: block;
+            border: 2px solid #444; background: #000;
+            transition: filter 0.5s ease;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        
-        #game-over-ui { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); width: 280px; max-width: 90%; display: none; flex-direction: column; align-items: center; z-index: 20; pointer-events: none; }
-        .go-title { color: #fff; font-size: 32px; font-weight: bold; margin-bottom: 5px; text-shadow: 0 0 15px #f0f; }
-        .replay-btn { color: #fff; font-size: 16px; margin-bottom: 15px; font-weight: bold; text-shadow: 0 0 10px #0ff; animation: subtelneMiganie 1.5s ease-in-out infinite; }
-        @keyframes subtelneMiganie { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.95); } }
-        
-        #leaderboard { width: 100%; background: rgba(20, 20, 20, 0.95); border: 2px solid #0ff; color: #fff; padding: 10px; text-align: center; box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }
-        #ad-container { width: 400px; height: 40px; background: #000; border: 2px solid #444; border-top: none; position: relative; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding-left: 10px; transition: filter 0.5s ease; flex-shrink: 0; touch-action: manipulation; }
-        #yt-logo { width: 20px; height: 14px; background: #f00; border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; margin-right: 10px; flex-shrink: 0; z-index: 2; }
-        #yt-logo::after { content: ""; border-left: 5px solid white; border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
-        #ad-text { white-space: nowrap; color: #ffd700; font-weight: bold; font-size: 11px; transform: translateX(360px); z-index: 1; }
-        .blink-fast { animation: blinker 0.4s step-start infinite; color: #fff !important; }
-        @keyframes blinker { 50% { opacity: 0; } }
+
+        #game-over-ui {
+            position: absolute; top: 10%; left: 50%;
+            transform: translateX(-50%);
+            width: 280px; max-width: 90%;
+            display: none; flex-direction: column; align-items: center;
+            z-index: 20; pointer-events: none;
+        }
+        .go-title   { color: #fff; font-size: 32px; font-weight: bold; margin-bottom: 5px; text-shadow: 0 0 15px #f0f; }
+        .replay-btn { color: #fff; font-size: 16px; margin-bottom: 15px; font-weight: bold;
+            text-shadow: 0 0 10px #0ff; animation: blink 1.5s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.95)} }
+        #leaderboard { width:100%; background:rgba(20,20,20,0.95); border:2px solid #0ff; color:#fff; padding:10px; text-align:center; box-shadow:0 0 20px rgba(0,255,255,0.3); }
+
+        #ad-container {
+            width: 400px; height: 40px;
+            background: #000; border: 2px solid #444; border-top: none;
+            position: relative; overflow: hidden;
+            display: flex; align-items: center; padding-left: 10px;
+            transition: filter 0.5s ease; cursor: pointer;
+        }
+        #yt-logo { width:20px; height:14px; background:#f00; border-radius:4px; display:flex; align-items:center; justify-content:center; margin-right:10px; flex-shrink:0; z-index:2; }
+        #yt-logo::after { content:""; border-left:5px solid #fff; border-top:3px solid transparent; border-bottom:3px solid transparent; }
+        #ad-text { white-space:nowrap; color:#ffd700; font-weight:bold; font-size:11px; transform:translateX(360px); }
+        .blink-fast { animation:blinker .4s step-start infinite; color:#fff !important; }
+        @keyframes blinker { 50%{opacity:0} }
+
+        .dimmed { filter: brightness(0.3) blur(2px); pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="nick-overlay">
-        <h2 style="color: #0ff; letter-spacing: 2px; font-size: 18px;">YOUR NICKNAME</h2>
-        <input type="text" id="nick-input" placeholder="Enter Nick..." maxlength="10" autocomplete="off">
+        <h2>YOUR NICKNAME</h2>
+        <input type="text" id="nick-input" placeholder="Enter Nick..." maxlength="10" autocomplete="off" autocorrect="off" spellcheck="false">
         <button id="start-btn">ENGAGE</button>
     </div>
 
     <div id="game-wrapper">
-    <div id="scoreboard">
-        <div class="stat-box"><span class="label">SCORE</span><span id="currentScore" class="value">0</span></div>
-        <div class="stat-box"><span class="label">YOUR BEST</span><span id="bestScore" class="value">0</span></div>
-    </div>
-
-    <div style="position: relative; display: flex; justify-content: center; align-items: center;">
-        <canvas id="gameCanvas"></canvas>
-        <div id="game-over-ui">
-            <div class="go-title">GAME OVER</div>
-            <div class="replay-btn">TAP TO REPLAY</div>
-            <div id="leaderboard">
-                <h3 style="margin-top:0; color:#f0f; font-size: 16px;">BEST PLAYERS</h3>
-                <div id="lb-list" style="font-size: 12px; font-family: monospace;"></div>
+        <div id="scoreboard">
+            <div class="stat-box"><span class="label">SCORE</span><span id="currentScore" class="value">0</span></div>
+            <div class="stat-box"><span class="label">YOUR BEST</span><span id="bestScore" class="value">0</span></div>
+        </div>
+        <div id="canvas-wrap">
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
+            <div id="game-over-ui">
+                <div class="go-title">GAME OVER</div>
+                <div class="replay-btn">TAP TO REPLAY</div>
+                <div id="leaderboard">
+                    <h3 style="margin-top:0;color:#f0f;font-size:16px;">BEST PLAYERS</h3>
+                    <div id="lb-list" style="font-size:12px;font-family:monospace;"></div>
+                </div>
             </div>
+        </div>
+        <div id="ad-container">
+            <div id="yt-logo"></div>
+            <div id="ad-text"></div>
         </div>
     </div>
 
-    <div id="ad-container">
-        <div id="yt-logo"></div>
-        <div id="ad-text"></div>
-    </div>
-    </div><!-- end #game-wrapper -->
-
 <script>
-    // Skalowanie całej gry proporcjonalnie do ekranu
+    // ── SKALOWANIE ─────────────────────────────────────────────────────
     const gameWrapper = document.getElementById("game-wrapper");
-    const GAME_W = 400;
-    const GAME_H = 600 + 50 + 40; // canvas + scoreboard + ad
+    const GAME_W = 400, GAME_H = 690;
 
     function scaleGame() {
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
+        const vw = window.innerWidth, vh = window.innerHeight;
         const scale = Math.min(vw / GAME_W, (vh * 0.97) / GAME_H);
-        gameWrapper.style.transform = `scale(${scale})`;
-        gameWrapper.style.transformOrigin = "top center";
-        // Wycentruj wrapper
-        const scaledH = GAME_H * scale;
-        const topOffset = Math.max(0, (vh - scaledH) / 2);
-        gameWrapper.style.position = "absolute";
-        gameWrapper.style.top = topOffset + "px";
-        gameWrapper.style.left = "50%";
-        gameWrapper.style.marginLeft = `-${GAME_W / 2}px`;
+        const tx = (vw - GAME_W * scale) / 2;
+        const ty = (vh - GAME_H * scale) / 2;
+        gameWrapper.style.transform = "translate("+tx+"px,"+ty+"px) scale("+scale+")";
     }
     window.addEventListener('resize', scaleGame);
-    window.addEventListener('orientationchange', () => setTimeout(scaleGame, 200));
+    window.addEventListener('orientationchange', function(){ setTimeout(scaleGame, 250); });
     scaleGame();
 
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d", { alpha: false });
-    const scoreElement = document.getElementById("currentScore");
-    const bestScoreElement = document.getElementById("bestScore");
-    const scoreboard = document.getElementById("scoreboard");
-    const gameOverUI = document.getElementById("game-over-ui");
+    // ── DOM ────────────────────────────────────────────────────────────
+    const canvas      = document.getElementById("gameCanvas");
+    const ctx         = canvas.getContext("2d", { alpha: false });
+    const scoreEl     = document.getElementById("currentScore");
+    const bestScoreEl = document.getElementById("bestScore");
+    const scoreboard  = document.getElementById("scoreboard");
+    const gameOverUI  = document.getElementById("game-over-ui");
     const nickOverlay = document.getElementById("nick-overlay");
-    const nickInput = document.getElementById("nick-input");
+    const nickInput   = document.getElementById("nick-input");
+    const adContainer = document.getElementById("ad-container");
 
-    canvas.width = 400; canvas.height = 600;
-
+    // ── NICK ───────────────────────────────────────────────────────────
     window.playerNick = localStorage.getItem("neonBallNick") || "";
-    if(window.playerNick) nickInput.value = window.playerNick;
+    if (window.playerNick) nickInput.value = window.playerNick;
 
     function doStart() {
-        if(nickInput.value.length < 2) return alert("Nick too short!");
-        window.playerNick = nickInput.value;
-        localStorage.setItem("neonBallNick", window.playerNick);
+        var val = nickInput.value.trim();
+        if (val.length < 2) { alert("Nick too short!"); return; }
+        window.playerNick = val;
+        localStorage.setItem("neonBallNick", val);
         nickOverlay.style.display = "none";
         gameActive = true;
-        gameStarted = false; // czeka na pierwsze tapnięcie
-        if(window.loadLeaderboard) window.loadLeaderboard();
+        gameStarted = false;
+        if (window.loadLeaderboard) window.loadLeaderboard();
     }
-    const startBtn = document.getElementById("start-btn");
-    startBtn.addEventListener("click", doStart);
-    startBtn.addEventListener("touchend", (e) => { e.preventDefault(); doStart(); });
+    document.getElementById("start-btn").addEventListener("click", doStart);
+    nickInput.addEventListener("keydown", function(e){ if(e.key==="Enter") doStart(); });
 
-    const myVideos = ["L3JZS2R_D6k","BJU6OyDPMEY","BzM9CYuPW8M"];
-    const adTexts = ["Build LEGO Cars!", "Epic MOCs!"];
-    const adContainerText = document.getElementById("ad-text");
-    let isAdRunning = false;
+    // ── REKLAMA ────────────────────────────────────────────────────────
+    var myVideos = ["L3JZS2R_D6k","BJU6OyDPMEY","BzM9CYuPW8M"];
+    var adTexts  = ["Build LEGO Cars!","Epic MOCs!"];
+    var adText   = document.getElementById("ad-text");
+    var isAdRunning = false;
 
     function openRandomVideo() {
-        const id = myVideos[Math.floor(Math.random() * myVideos.length)];
-        window.open("https://www.youtube.com/watch?v=" + id, "_blank");
+        window.open("https://www.youtube.com/watch?v="+myVideos[Math.floor(Math.random()*myVideos.length)], "_blank");
     }
+    adContainer.addEventListener("click", openRandomVideo);
+    adContainer.addEventListener("touchend", function(e){ e.preventDefault(); openRandomVideo(); }, { passive: false });
 
     function runAdCycle() {
-        if (isAdRunning) return; isAdRunning = true;
-        adContainerText.innerText = adTexts[Math.floor(Math.random() * adTexts.length)];
-        let pos = 360;
-        const scroll = setInterval(() => {
-            pos -= 2.2; adContainerText.style.transform = `translateX(${pos}px)`;
+        if (isAdRunning) return;
+        isAdRunning = true;
+        adText.innerText = adTexts[Math.floor(Math.random()*adTexts.length)];
+        var pos = 360;
+        var scroll = setInterval(function(){
+            pos -= 2.2; adText.style.transform = "translateX("+pos+"px)";
             if (pos <= 5) {
-                clearInterval(scroll); adContainerText.style.transform = `translateX(5px)`;
-                setTimeout(() => {
-                    adContainerText.innerText = "CLICK TO WATCH!"; adContainerText.classList.add("blink-fast");
-                    setTimeout(() => {
-                        adContainerText.classList.remove("blink-fast"); adContainerText.innerText = "";
-                        adContainerText.style.transform = `translateX(360px)`; isAdRunning = false;
+                clearInterval(scroll); adText.style.transform = "translateX(5px)";
+                setTimeout(function(){
+                    adText.innerText = "CLICK TO WATCH!"; adText.classList.add("blink-fast");
+                    setTimeout(function(){
+                        adText.classList.remove("blink-fast"); adText.innerText = "";
+                        adText.style.transform = "translateX(360px)"; isAdRunning = false;
                     }, 4000);
                 }, 1000);
             }
         }, 20);
     }
-    setInterval(runAdCycle, 30000); setTimeout(runAdCycle, 3000);
+    setTimeout(runAdCycle, 3000);
+    setInterval(runAdCycle, 30000);
 
-    // Obsługa kliknięcia w pasek YT – działa i na mobile i na desktop
-    const adEl = document.getElementById("ad-container");
-    adEl.addEventListener("click", openRandomVideo);
-    adEl.addEventListener("touchend", function(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        openRandomVideo();
-    }, { passive: false });
-
-    // ── AUDIO (lazy init) ──────────────────────────────────────────────
-    let audioCtx = null;
-    function getAudioCtx() {
+    // ── AUDIO ──────────────────────────────────────────────────────────
+    var audioCtx = null;
+    function getAC() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         return audioCtx;
     }
-    function playSound(f, t, d, v) {
+    function playSound(f,t,d,v) {
         try {
-            const ac = getAudioCtx();
-            if (ac.state === 'suspended') ac.resume();
-            const o = ac.createOscillator(), g = ac.createGain();
+            var ac = getAC();
+            if (ac.state==='suspended') ac.resume();
+            var o = ac.createOscillator(), g = ac.createGain();
             o.type = t; o.frequency.setValueAtTime(f, ac.currentTime);
             g.gain.setValueAtTime(v, ac.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + d);
-            o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d);
-        } catch(e) {}
+            g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+d);
+            o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+d);
+        } catch(e){}
     }
-    const sfx = {
-        jump:  () => playSound(480, 'triangle', 0.1, 0.3),
-        score: () => playSound(950, 'sine',     0.2, 0.12),
-        hit:   () => { playSound(120, 'sawtooth', 0.4, 0.2); playSound(80, 'sine', 0.5, 0.2); }
+    var sfx = {
+        jump:  function(){ playSound(480,'triangle',0.1,0.3); },
+        score: function(){ playSound(950,'sine',0.2,0.12); },
+        hit:   function(){ playSound(120,'sawtooth',0.4,0.2); playSound(80,'sine',0.5,0.2); }
     };
 
-    // ── BACKGROUND (pre-rendered once) ────────────────────────────────
-    const bgCanvas = document.createElement('canvas');
+    // ── TŁO ────────────────────────────────────────────────────────────
+    var bgCanvas = document.createElement('canvas');
     bgCanvas.width = 400; bgCanvas.height = 600;
-    const bgCtx = bgCanvas.getContext('2d');
-    bgCtx.fillStyle = "#000"; bgCtx.fillRect(0, 0, 400, 600);
+    var bgCtx = bgCanvas.getContext('2d');
+    bgCtx.fillStyle = "#000"; bgCtx.fillRect(0,0,400,600);
     bgCtx.strokeStyle = "#151515"; bgCtx.beginPath();
-    for (let i = 0; i < 400; i += 40) { bgCtx.moveTo(i, 0); bgCtx.lineTo(i, 600); }
-    for (let i = 0; i < 600; i += 40) { bgCtx.moveTo(0, i); bgCtx.lineTo(400, i); }
-    bgCtx.stroke(); // jeden draw call zamiast wielu
+    for (var i=0; i<=400; i+=40){ bgCtx.moveTo(i,0); bgCtx.lineTo(i,600); }
+    for (var i=0; i<=600; i+=40){ bgCtx.moveTo(0,i); bgCtx.lineTo(400,i); }
+    bgCtx.stroke();
 
-    // ── TRAIL (ring buffer – zero alokacji co klatkę) ──────────────────
-    const TRAIL_LEN = 12;
-    const trailX = new Float32Array(TRAIL_LEN);
-    const trailY = new Float32Array(TRAIL_LEN);
-    let trailHead = 0, trailCount = 0;
+    // ── TRAIL ──────────────────────────────────────────────────────────
+    var TRAIL_LEN = 12;
+    var trailX = new Float32Array(TRAIL_LEN);
+    var trailY = new Float32Array(TRAIL_LEN);
+    var trailHead = 0, trailCount = 0;
+    function trailPush(x,y){ trailX[trailHead]=x; trailY[trailHead]=y; trailHead=(trailHead+1)%TRAIL_LEN; if(trailCount<TRAIL_LEN)trailCount++; }
+    function trailClear(){ trailHead=0; trailCount=0; }
 
-    function trailPush(x, y) {
-        trailX[trailHead] = x; trailY[trailHead] = y;
-        trailHead = (trailHead + 1) % TRAIL_LEN;
-        if (trailCount < TRAIL_LEN) trailCount++;
-    }
-    function trailClear() { trailHead = 0; trailCount = 0; }
-
-    // ── PARTICLES (object pool – zero alokacji po starcie) ────────────
-    const POOL_SIZE = 60; // max 3 eksplozje x 20
-    const pool = Array.from({ length: POOL_SIZE }, () =>
-        ({ x:0, y:0, vx:0, vy:0, radius:0, alpha:0, active:false })
-    );
-    let activeParticles = 0;
-
-    function createExplosion(x, y) {
-        let spawned = 0;
-        for (let i = 0; i < POOL_SIZE && spawned < 20; i++) {
-            if (!pool[i].active) {
-                const p = pool[i];
-                p.x = x; p.y = y;
-                p.vx = (Math.random() - 0.5) * 12;
-                p.vy = (Math.random() - 0.5) * 12;
-                p.radius = Math.random() * 3 + 1;
-                p.alpha = 1; p.active = true;
-                spawned++; activeParticles++;
+    // ── PARTICLES ──────────────────────────────────────────────────────
+    var POOL = [];
+    for (var i=0; i<60; i++) POOL.push({x:0,y:0,vx:0,vy:0,r:0,a:0,on:false});
+    var activePart = 0;
+    function explode(x,y) {
+        var n=0;
+        for (var i=0; i<60&&n<20; i++) {
+            if (!POOL[i].on) {
+                var p=POOL[i]; p.x=x; p.y=y;
+                p.vx=(Math.random()-0.5)*12; p.vy=(Math.random()-0.5)*12;
+                p.r=Math.random()*3+1; p.a=1; p.on=true;
+                n++; activePart++;
             }
         }
     }
 
-    // ── GAME STATE ─────────────────────────────────────────────────────
-    let score = 0, bestScore = Number(localStorage.getItem("neonBallBestScore")) || 0;
-    bestScoreElement.innerText = bestScore;
-    let gameActive = false, gameStarted = false, canRestart = true, firstLoad = true, frameCount = 0;
-
-    const ball = { x: 100, y: 300, radius: 12, gravity: 0.6, velocity: 0, jump: -8, color: "#f0f" };
-    let pipes = [];
-    const pipeWidth = 55, basePipeGap = 165, pipeSpeed = 3.2;
-
-    // ── FPS CAP (60 fps niezależnie od częstotliwości ekranu) ──────────
-    const TARGET_FPS = 60;
-    const FRAME_MS  = 1000 / TARGET_FPS;
-    let lastTime = 0;
-
-    // ── PIPE COLORS (buforowane) ───────────────────────────────────────
-    const PIPE_COLORS = { STATIC: "#0ff", MOVING: "#0f0", SHRINKING: "#ff0" };
+    // ── STAN ───────────────────────────────────────────────────────────
+    var score=0, bestScore=Number(localStorage.getItem("neonBallBestScore"))||0;
+    bestScoreEl.innerText = bestScore;
+    var gameActive=false, gameStarted=false, canRestart=true, firstLoad=true, frameCount=0;
+    var ball = {x:100, y:300, r:12, gravity:0.6, vel:0, jump:-8, color:"#f0f"};
+    var pipes=[], PW=55, BASE_GAP=165, SPEED=3.2;
+    var PIPE_CLR = {STATIC:"#0ff", MOVING:"#0f0", SHRINKING:"#ff0"};
+    var FRAME_MS = 1000/60, lastTime=0;
 
     function createPipe() {
-        const types = ['STATIC', 'MOVING', 'SHRINKING'];
-        const type = types[Math.floor(Math.random() * 3)];
-        const reduction = Math.min(0.25, Math.floor(score / 20) * 0.05);
-        let gap = basePipeGap * (1 - reduction);
-        if (type === 'STATIC') gap *= 0.90;
-        const h = Math.floor(Math.random() * (600 - gap - 200)) + 100;
-        pipes.push({ x: 400, top: h, baseTop: h, passed: false, type,
-            offset: Math.random() * Math.PI * 2, currentGap: gap, maxGap: gap,
-            shrinkDir: Math.random() > 0.5 ? 'TOP' : 'BOTTOM' });
+        var types=['STATIC','MOVING','SHRINKING'];
+        var type=types[Math.floor(Math.random()*3)];
+        var red=Math.min(0.25,Math.floor(score/20)*0.05);
+        var gap=BASE_GAP*(1-red);
+        if(type==='STATIC') gap*=0.90;
+        var h=Math.floor(Math.random()*(600-gap-200))+100;
+        pipes.push({x:400,top:h,baseTop:h,passed:false,type,offset:Math.random()*Math.PI*2,gap:gap,maxGap:gap,shrinkDir:Math.random()>0.5?'TOP':'BOTTOM'});
     }
 
     // ── DRAW ───────────────────────────────────────────────────────────
     function draw() {
-        ctx.drawImage(bgCanvas, 0, 0);
+        ctx.drawImage(bgCanvas,0,0);
+        ctx.fillStyle="#022"; ctx.lineWidth=3;
+        for(var i=0;i<pipes.length;i++){ var p=pipes[i],bY=p.top+p.gap; ctx.fillRect(p.x,0,PW,p.top); ctx.fillRect(p.x,bY,PW,600-bY); }
+        for(var i=0;i<pipes.length;i++){ var p=pipes[i],bY=p.top+p.gap; ctx.strokeStyle=PIPE_CLR[p.type]; ctx.strokeRect(p.x,0,PW,p.top); ctx.strokeRect(p.x,bY,PW,600-bY); }
 
-        // Rury – grupujemy fill i stroke osobno żeby minimalizować zmiany stanu
-        ctx.fillStyle = "#022";
-        ctx.lineWidth = 3;
-        for (let i = 0; i < pipes.length; i++) {
-            const p = pipes[i];
-            const bY = p.top + p.currentGap;
-            ctx.fillRect(p.x, 0, pipeWidth, p.top);
-            ctx.fillRect(p.x, bY, pipeWidth, 600 - bY);
-        }
-        for (let i = 0; i < pipes.length; i++) {
-            const p = pipes[i];
-            const bY = p.top + p.currentGap;
-            ctx.strokeStyle = PIPE_COLORS[p.type];
-            ctx.strokeRect(p.x, 0, pipeWidth, p.top);
-            ctx.strokeRect(p.x, bY, pipeWidth, 600 - bY);
-        }
-
-        if (gameActive || !gameStarted) {
-            // Trail – jedna ścieżka zamiast 12 osobnych beginPath
-            ctx.fillStyle = ball.color;
-            for (let i = 0; i < trailCount; i++) {
-                const idx = (trailHead - 1 - i + TRAIL_LEN) % TRAIL_LEN;
-                const alpha = (1 - i / trailCount) * 0.4;
-                const r = ball.radius * (1 - i / 15);
-                if (r <= 0) continue;
-                ctx.globalAlpha = alpha;
-                ctx.beginPath();
-                ctx.arc(trailX[idx] - i * 2, trailY[idx], r, 0, Math.PI * 2);
-                ctx.fill();
+        if (gameActive||!gameStarted) {
+            ctx.fillStyle=ball.color;
+            for(var i=0;i<trailCount;i++){
+                var idx=(trailHead-1-i+TRAIL_LEN)%TRAIL_LEN;
+                var r=ball.r*(1-i/15); if(r<=0)continue;
+                ctx.globalAlpha=(1-i/trailCount)*0.4;
+                ctx.beginPath(); ctx.arc(trailX[idx]-i*2,trailY[idx],r,0,Math.PI*2); ctx.fill();
             }
-            ctx.globalAlpha = 1;
-
-            // Piłka
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-            ctx.fillStyle = ball.color; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
-            ctx.fill(); ctx.stroke();
+            ctx.globalAlpha=1;
+            ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
+            ctx.fillStyle=ball.color; ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
         }
 
-        // Cząsteczki – jeden kolor więc batch po kolorze nie jest potrzebny,
-        // ale łączymy update + draw żeby nie iterować dwa razy
-        if (activeParticles > 0) {
-            for (let i = 0; i < POOL_SIZE; i++) {
-                const p = pool[i];
-                if (!p.active) continue;
-                p.x += p.vx; p.y += p.vy; p.alpha -= 0.02;
-                if (p.alpha <= 0) { p.active = false; activeParticles--; continue; }
-                ctx.globalAlpha = p.alpha;
-                ctx.fillStyle = ball.color;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+        if(activePart>0){
+            for(var i=0;i<60;i++){
+                var p=POOL[i]; if(!p.on)continue;
+                p.x+=p.vx; p.y+=p.vy; p.a-=0.02;
+                if(p.a<=0){p.on=false;activePart--;continue;}
+                ctx.globalAlpha=p.a; ctx.fillStyle=ball.color;
+                ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
             }
-            ctx.globalAlpha = 1;
+            ctx.globalAlpha=1;
         }
 
-        if (firstLoad && gameActive && !gameStarted) {
-            ctx.fillStyle = "#fff"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center";
-            ctx.fillText("TAP TO START", 200, 350);
+        if(firstLoad&&gameActive&&!gameStarted){
+            ctx.fillStyle="#fff"; ctx.font="bold 18px Arial"; ctx.textAlign="center";
+            ctx.fillText("TAP TO START",200,350);
         }
     }
 
     // ── UPDATE ─────────────────────────────────────────────────────────
     function update() {
-        if (!gameActive || !gameStarted) return;
-        frameCount++;
-        ball.velocity += ball.gravity;
-        ball.y += ball.velocity;
-        trailPush(ball.x, ball.y);
-
-        if (ball.y + ball.radius > 600 || ball.y - ball.radius < 0) { gameOver(); return; }
-        if (pipes.length === 0 || pipes[pipes.length - 1].x < 180) createPipe();
-
-        for (let i = pipes.length - 1; i >= 0; i--) {
-            const p = pipes[i];
-            p.x -= pipeSpeed;
-            if (p.type === 'MOVING') {
-                p.top = p.baseTop + Math.sin(frameCount * 0.04 + p.offset) * 50;
-            } else if (p.type === 'SHRINKING') {
-                const sVal = Math.abs(Math.sin(frameCount * 0.05 + p.offset)) * 55;
-                if (p.shrinkDir === 'TOP') { p.top = p.baseTop + sVal; p.currentGap = p.maxGap - sVal; }
-                else { p.currentGap = p.maxGap - sVal; }
+        if(!gameActive||!gameStarted) return;
+        frameCount++; ball.vel+=ball.gravity; ball.y+=ball.vel;
+        trailPush(ball.x,ball.y);
+        if(ball.y+ball.r>600||ball.y-ball.r<0){gameOver();return;}
+        if(!pipes.length||pipes[pipes.length-1].x<180) createPipe();
+        for(var i=pipes.length-1;i>=0;i--){
+            var p=pipes[i]; p.x-=SPEED;
+            if(p.type==='MOVING') p.top=p.baseTop+Math.sin(frameCount*0.04+p.offset)*50;
+            else if(p.type==='SHRINKING'){
+                var sv=Math.abs(Math.sin(frameCount*0.05+p.offset))*55;
+                if(p.shrinkDir==='TOP'){p.top=p.baseTop+sv;p.gap=p.maxGap-sv;}
+                else p.gap=p.maxGap-sv;
             }
-            if (ball.x + ball.radius > p.x && ball.x - ball.radius < p.x + pipeWidth &&
-                (ball.y - ball.radius < p.top || ball.y + ball.radius > p.top + p.currentGap)) {
-                gameOver(); return;
+            if(ball.x+ball.r>p.x&&ball.x-ball.r<p.x+PW&&(ball.y-ball.r<p.top||ball.y+ball.r>p.top+p.gap)){gameOver();return;}
+            if(!p.passed&&p.x+PW<ball.x){
+                score++;p.passed=true;scoreEl.innerText=score;sfx.score();
+                if(score>bestScore){bestScore=score;bestScoreEl.innerText=bestScore;localStorage.setItem("neonBallBestScore",bestScore);}
             }
-            if (!p.passed && p.x + pipeWidth < ball.x) {
-                score++; p.passed = true; scoreElement.innerText = score; sfx.score();
-                if (score > bestScore) {
-                    bestScore = score; bestScoreElement.innerText = bestScore;
-                    localStorage.setItem("neonBallBestScore", bestScore);
-                }
-            }
-            if (p.x + pipeWidth < 0) pipes.splice(i, 1);
+            if(p.x+PW<0) pipes.splice(i,1);
         }
     }
 
     // ── GAME OVER ──────────────────────────────────────────────────────
     function gameOver() {
-        if (!gameActive) return;
-        sfx.hit();
-        createExplosion(ball.x, ball.y);
-        gameActive = false;
-        canRestart = false;
-        setTimeout(() => {
+        if(!gameActive) return;
+        sfx.hit(); explode(ball.x,ball.y);
+        gameActive=false; canRestart=false;
+        setTimeout(function(){
             canvas.classList.add('dimmed');
             scoreboard.classList.add('dimmed');
-            document.getElementById("ad-container").classList.add('dimmed');
-            gameOverUI.style.display = "flex";
-            if (window.saveScore) window.saveScore(window.playerNick, score);
-            setTimeout(() => { canRestart = true; }, 300);
-        }, 200);
+            adContainer.classList.add('dimmed');
+            gameOverUI.style.display="flex";
+            if(window.saveScore) window.saveScore(window.playerNick,score);
+            setTimeout(function(){canRestart=true;},300);
+        },200);
     }
 
-    // ── INPUT ──────────────────────────────────────────────────────────
+    // ── INPUT — TYLKO canvas, overlay ma własne handlery ───────────────
     function handleAction(e) {
-        if (nickOverlay.style.display !== "none" && nickOverlay.style.display !== "") return;
-        if (e.type === "keydown" && e.code !== "Space") return;
-        // preventDefault tylko gdy gra aktywna - nie blokujemy UI overlaya
-        if (e.cancelable && e.type === "touchstart") e.preventDefault();
-
-        if (gameActive) {
-            if (!gameStarted) { gameStarted = true; firstLoad = false; }
-            ball.velocity = ball.jump; sfx.jump();
-        } else if (canRestart) {
+        if(e.cancelable) e.preventDefault();
+        if(gameActive){
+            if(!gameStarted){gameStarted=true;firstLoad=false;}
+            ball.vel=ball.jump; sfx.jump();
+        } else if(canRestart){
             canvas.classList.remove('dimmed');
             scoreboard.classList.remove('dimmed');
-            document.getElementById("ad-container").classList.remove('dimmed');
-            ball.x = 100; ball.y = 300; ball.velocity = ball.jump;
-            pipes = []; score = 0; scoreElement.innerText = "0";
-            trailClear(); activeParticles = 0;
-            for (let i = 0; i < POOL_SIZE; i++) pool[i].active = false;
-            frameCount = 0; gameActive = true; gameStarted = true; firstLoad = false;
-            gameOverUI.style.display = "none"; sfx.jump();
+            adContainer.classList.remove('dimmed');
+            ball.x=100;ball.y=300;ball.vel=ball.jump;
+            pipes=[];score=0;scoreEl.innerText="0";
+            trailClear();activePart=0;
+            for(var i=0;i<60;i++) POOL[i].on=false;
+            frameCount=0;gameActive=true;gameStarted=true;firstLoad=false;
+            gameOverUI.style.display="none"; sfx.jump();
         }
     }
 
-    // ── MAIN LOOP (z FPS cap) ──────────────────────────────────────────
-    function loop(timestamp) {
-        requestAnimationFrame(loop);
-        const delta = timestamp - lastTime;
-        if (delta < FRAME_MS) return; // pomiń klatkę jeśli za wcześnie
-        lastTime = timestamp - (delta % FRAME_MS); // korekcja dryftu
-        update();
-        draw();
-    }
+    canvas.addEventListener("touchstart", handleAction, {passive:false});
+    canvas.addEventListener("mousedown",  handleAction);
+    window.addEventListener("keydown", function(e){
+        if(e.code!=="Space") return;
+        if(nickOverlay.style.display!=="none") return;
+        handleAction(e);
+    });
 
-    window.addEventListener("keydown", handleAction);
-    canvas.addEventListener("touchstart", handleAction, { passive: false });
+    // ── PĘTLA ──────────────────────────────────────────────────────────
+    function loop(ts) {
+        requestAnimationFrame(loop);
+        var dt=ts-lastTime;
+        if(dt<FRAME_MS) return;
+        lastTime=ts-(dt%FRAME_MS);
+        update(); draw();
+    }
     requestAnimationFrame(loop);
 </script>
 </body>
