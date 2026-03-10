@@ -79,7 +79,8 @@
 
         #scoreboard {
             width: 404px; background: #000;
-            border: 2px solid #444; border-bottom: none;
+            border: 2px solid #444;
+            border-bottom: 2px solid #888;
             display: flex; justify-content: space-around;
             padding: 10px 0; transition: filter 0.5s ease;
         }
@@ -89,7 +90,7 @@
         #bestScore    { color: #f0f; text-shadow: 0 0 12px #f0f; }
         .value { font-size: 28px; font-weight: bold; }
 
-        #canvas-wrap { position: relative; width: 404px; height: 604px; border-left: 2px solid #444; border-right: 2px solid #444; }
+        #canvas-wrap { position: relative; width: 404px; height: 600px; border-left: 2px solid #444; border-right: 2px solid #444; }
 
         canvas {
             display: block;
@@ -115,7 +116,8 @@
 
         #ad-container {
             width: 404px; height: 40px;
-            background: #000; border: 2px solid #444; border-top: none;
+            background: #000; border: 2px solid #444;
+            border-top: 2px solid #888;
             position: relative; overflow: hidden;
             display: flex; align-items: center; padding-left: 10px;
             transition: filter 0.5s ease; cursor: pointer;
@@ -164,15 +166,24 @@
     const gameWrapper = document.getElementById("game-wrapper");
     const GAME_W = 404, GAME_H = 694;
 
+    // Pomocniczy div do pomiaru prawdziwej wysokości viewportu (działa w Opera, Chrome, Safari)
+    var vpHelper = document.createElement('div');
+    vpHelper.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100dvh;pointer-events:none;visibility:hidden;';
+    document.body.appendChild(vpHelper);
+
     function scaleGame() {
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const scale = Math.min(vw / GAME_W, (vh * 0.93) / GAME_H);
-        const tx = (vw - GAME_W * scale) / 2;
-        const ty = (vh - GAME_H * scale) / 2;
+        var vw = window.innerWidth;
+        // Używamy dvh przez helper — poprawnie obsługuje pasek adresu w każdej przeglądarce
+        var vh = vpHelper.getBoundingClientRect().height || window.innerHeight;
+        var scale = Math.min(vw / GAME_W, (vh * 0.93) / GAME_H);
+        var tx = (vw - GAME_W * scale) / 2;
+        var ty = (vh - GAME_H * scale) / 2;
         gameWrapper.style.transform = "translate("+tx+"px,"+ty+"px) scale("+scale+")";
     }
     window.addEventListener('resize', scaleGame);
-    window.addEventListener('orientationchange', function(){ setTimeout(scaleGame, 250); });
+    window.addEventListener('orientationchange', function(){ setTimeout(scaleGame, 350); });
+    // Dodatkowe odpalenie po załadowaniu — Opera czasem potrzebuje chwili
+    window.addEventListener('load', function(){ setTimeout(scaleGame, 100); });
     scaleGame();
 
     // ── DOM ────────────────────────────────────────────────────────────
