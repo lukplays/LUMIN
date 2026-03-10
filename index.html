@@ -94,7 +94,7 @@
         @keyframes subtelneMiganie { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.95); } }
         
         #leaderboard { width: 100%; background: rgba(20, 20, 20, 0.95); border: 2px solid #0ff; color: #fff; padding: 10px; text-align: center; box-shadow: 0 0 20px rgba(0, 255, 255, 0.3); }
-        #ad-container { width: 400px; height: 40px; background: #000; border: 2px solid #444; border-top: none; position: relative; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding-left: 10px; transition: filter 0.5s ease; flex-shrink: 0; }
+        #ad-container { width: 400px; height: 40px; background: #000; border: 2px solid #444; border-top: none; position: relative; overflow: hidden; cursor: pointer; display: flex; align-items: center; padding-left: 10px; transition: filter 0.5s ease; flex-shrink: 0; touch-action: manipulation; }
         #yt-logo { width: 20px; height: 14px; background: #f00; border-radius: 4px; position: relative; display: flex; align-items: center; justify-content: center; margin-right: 10px; flex-shrink: 0; z-index: 2; }
         #yt-logo::after { content: ""; border-left: 5px solid white; border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
         #ad-text { white-space: nowrap; color: #ffd700; font-weight: bold; font-size: 11px; transform: translateX(360px); z-index: 1; }
@@ -105,7 +105,7 @@
 <body>
 
     <div id="nick-overlay">
-        <h2 style="color: #0ff; letter-spacing: 2px; font-size: 18px;">PILOT IDENTIFICATION</h2>
+        <h2 style="color: #0ff; letter-spacing: 2px; font-size: 18px;">YOUR NICKNAME</h2>
         <input type="text" id="nick-input" placeholder="Enter Nick..." maxlength="10" autocomplete="off">
         <button id="start-btn">ENGAGE</button>
     </div>
@@ -128,7 +128,7 @@
         </div>
     </div>
 
-    <div id="ad-container" onclick="openRandomVideo()">
+    <div id="ad-container">
         <div id="yt-logo"></div>
         <div id="ad-text"></div>
     </div>
@@ -143,7 +143,7 @@
     function scaleGame() {
         const vw = window.innerWidth;
         const vh = window.innerHeight;
-        const scale = Math.min(vw / GAME_W, vh / GAME_H);
+        const scale = Math.min(vw / GAME_W, (vh * 0.97) / GAME_H);
         gameWrapper.style.transform = `scale(${scale})`;
         gameWrapper.style.transformOrigin = "top center";
         // Wycentruj wrapper
@@ -211,6 +211,15 @@
         }, 20);
     }
     setInterval(runAdCycle, 30000); setTimeout(runAdCycle, 3000);
+
+    // Obsługa kliknięcia w pasek YT – działa i na mobile i na desktop
+    const adEl = document.getElementById("ad-container");
+    adEl.addEventListener("click", openRandomVideo);
+    adEl.addEventListener("touchend", function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        openRandomVideo();
+    }, { passive: false });
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSound(f, t, d, v) {
@@ -322,7 +331,7 @@
             setTimeout(() => {
                 canvas.classList.add('dimmed');
                 scoreboard.classList.add('dimmed');
-                adContainer.classList.add('dimmed');
+                document.getElementById("ad-container").classList.add('dimmed');
                 gameOverUI.style.display = "flex";
                 if(window.saveScore) window.saveScore(window.playerNick, score);
                 setTimeout(() => { canRestart = true; }, 300);
@@ -339,7 +348,7 @@
             if (!gameStarted) { gameStarted = true; firstLoad = false; }
             ball.velocity = ball.jump; sfx.jump();
         } else if (canRestart) {
-            canvas.classList.remove('dimmed'); scoreboard.classList.remove('dimmed'); adContainer.classList.remove('dimmed');
+            canvas.classList.remove('dimmed'); scoreboard.classList.remove('dimmed'); document.getElementById("ad-container").classList.remove('dimmed');
             ball.y = 300; ball.velocity = ball.jump; pipes = []; score = 0; scoreElement.innerText = "0";
             ball.trail = []; particles = []; frameCount = 0; gameActive = true; gameStarted = true; 
             gameOverUI.style.display = "none"; sfx.jump();
