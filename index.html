@@ -78,7 +78,7 @@
         }
 
         #scoreboard {
-            width: 400px; background: #000;
+            width: 404px; background: #000;
             border: 2px solid #444; border-bottom: none;
             display: flex; justify-content: space-around;
             padding: 10px 0; transition: filter 0.5s ease;
@@ -89,14 +89,15 @@
         #bestScore    { color: #f0f; text-shadow: 0 0 12px #f0f; }
         .value { font-size: 28px; font-weight: bold; }
 
-        #canvas-wrap { position: relative; width: 400px; height: 600px; }
+        #canvas-wrap { position: relative; width: 404px; height: 604px; border-left: 2px solid #444; border-right: 2px solid #444; }
 
         canvas {
             display: block;
-            border: 2px solid #444; background: #000;
+            background: #000;
             transition: filter 0.5s ease;
             touch-action: none;
             -webkit-tap-highlight-color: transparent;
+            width: 400px; height: 600px;
         }
 
         #game-over-ui {
@@ -113,7 +114,7 @@
         #leaderboard { width:100%; background:rgba(20,20,20,0.95); border:2px solid #0ff; color:#fff; padding:10px; text-align:center; box-shadow:0 0 20px rgba(0,255,255,0.3); }
 
         #ad-container {
-            width: 400px; height: 40px;
+            width: 404px; height: 40px;
             background: #000; border: 2px solid #444; border-top: none;
             position: relative; overflow: hidden;
             display: flex; align-items: center; padding-left: 10px;
@@ -161,11 +162,11 @@
 <script>
     // ── SKALOWANIE ─────────────────────────────────────────────────────
     const gameWrapper = document.getElementById("game-wrapper");
-    const GAME_W = 400, GAME_H = 690;
+    const GAME_W = 404, GAME_H = 694;
 
     function scaleGame() {
         const vw = window.innerWidth, vh = window.innerHeight;
-        const scale = Math.min(vw / GAME_W, (vh * 0.97) / GAME_H);
+        const scale = Math.min(vw / GAME_W, (vh * 0.93) / GAME_H);
         const tx = (vw - GAME_W * scale) / 2;
         const ty = (vh - GAME_H * scale) / 2;
         gameWrapper.style.transform = "translate("+tx+"px,"+ty+"px) scale("+scale+")";
@@ -407,8 +408,20 @@
         }
     }
 
+    // Podczas gry — tylko canvas
     canvas.addEventListener("touchstart", handleAction, {passive:false});
     canvas.addEventListener("mousedown",  handleAction);
+    // Po game over canvas ma pointer-events:none (dimmed) — słuchamy na document
+    document.addEventListener("touchstart", function(e){
+        if(nickOverlay.style.display!=="none") return;  // overlay widoczny - ignoruj
+        if(!canRestart || gameActive) return;           // gra trwa - ignoruj
+        handleAction(e);
+    }, {passive:false});
+    document.addEventListener("mousedown", function(e){
+        if(nickOverlay.style.display!=="none") return;
+        if(!canRestart || gameActive) return;
+        handleAction(e);
+    });
     window.addEventListener("keydown", function(e){
         if(e.code!=="Space") return;
         if(nickOverlay.style.display!=="none") return;
