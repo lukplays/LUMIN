@@ -441,7 +441,8 @@
     function handleAction(e) {
         if (nickOverlay.style.display !== "none" && nickOverlay.style.display !== "") return;
         if (e.type === "keydown" && e.code !== "Space") return;
-        if (e.cancelable) e.preventDefault();
+        // preventDefault tylko gdy gra aktywna - nie blokujemy UI overlaya
+        if (e.cancelable && e.type === "touchstart") e.preventDefault();
 
         if (gameActive) {
             if (!gameStarted) { gameStarted = true; firstLoad = false; }
@@ -470,7 +471,7 @@
     }
 
     window.addEventListener("keydown", handleAction);
-    window.addEventListener("touchstart", handleAction, { passive: false });
+    canvas.addEventListener("touchstart", handleAction, { passive: false });
     requestAnimationFrame(loop);
 </script>
 </body>
