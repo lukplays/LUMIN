@@ -7,120 +7,136 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-        const firebaseConfig = {
+        import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, where, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        const app = initializeApp({
             apiKey: "AIzaSyACsTGUuqymFd1emLyGp0uL7foTEiumH9k",
             authDomain: "neon-ball-lego.firebaseapp.com",
             projectId: "neon-ball-lego",
             storageBucket: "neon-ball-lego.firebasestorage.app",
             messagingSenderId: "1001917014792",
             appId: "1:1001917014792:web:dcbcb583d05036f22002bd"
-        };
-        const app = initializeApp(firebaseConfig);
-        const db  = getFirestore(app);
-        window.saveScore = async (nick, score) => {
+        });
+        const db = getFirestore(app);
+
+        window.saveScore = async function(nick, score) {
             if (!nick || score <= 0) return;
-            try { await addDoc(collection(db,"leaderboard"),{nick,score:Number(score),date:Date.now()}); window.loadLeaderboard(); }
-            catch(e){ console.error("Firebase Save Error:",e); }
-        };
-        window.loadLeaderboard = async () => {
             try {
-                const q = query(collection(db,"leaderboard"),orderBy("score","desc"),limit(15));
-                const snap = await getDocs(q);
-                const list = document.getElementById("lb-list");
-                if(!list) return;
-                list.innerHTML = "";
-                snap.forEach(doc => {
-                    const d = doc.data(), isMe = (d.nick===window.playerNick);
-                    const s = isMe ? 'color:#ffd700;font-weight:bold;text-shadow:0 0 8px #ffd700;' : '';
-                    list.innerHTML += `<div style="display:flex;justify-content:space-between;margin-bottom:5px;${s}"><span>${isMe?'▶ ':''}${d.nick}</span><span>${d.score}</span></div>`;
-                });
-            } catch(e){ console.error("Load Leaderboard Error:",e); }
+                const snap = await getDocs(query(collection(db,"leaderboard"), where("nick","==",nick), limit(1)));
+                if (snap.empty) {
+                    await addDoc(collection(db,"leaderboard"), {nick, score:Number(score), date:Date.now()});
+                } else {
+                    const d = snap.docs[0];
+                    if (Number(score) > d.data().score)
+                        await updateDoc(doc(db,"leaderboard",d.id), {score:Number(score), date:Date.now()});
+                }
+            } catch(e) { console.error("saveScore error:",e); }
+            window.loadLeaderboard();
         };
+
+        window.loadLeaderboard = async function() {
+            try {
+                const snap = await getDocs(query(collection(db,"leaderboard"), orderBy("score","desc"), limit(15)));
+                const list = document.getElementById("lb-list");
+                if (!list) return;
+                const medals = ["🥇","🥈","🥉"];
+                list.innerHTML = "";
+                let rank = 1;
+                snap.forEach(function(d) {
+                    const data = d.data();
+                    const isMe = data.nick === window.playerNick;
+                    const medal = medals[rank-1] || rank+".";
+                    const s = isMe ? 'color:#ffd700;font-weight:bold;text-shadow:0 0 8px #ffd700;' : '';
+                    list.innerHTML += '<div style="display:flex;justify-content:space-between;margin-bottom:5px;'+s+'">'
+                        +'<span>'+medal+' '+(isMe?'▶ ':'')+data.nick+'</span>'
+                        +'<span>'+data.score+'</span></div>';
+                    rank++;
+                });
+            } catch(e) { console.error("loadLeaderboard error:",e); }
+        };
+
+        // Gotowe — powiadom grę
+        window._firebaseReady = true;
+        if (window._onFirebaseReady) window._onFirebaseReady();
     </script>
 
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width:100%; height:100%; overflow:hidden; background:#050505; font-family:'Courier New',Courier,monospace; }
 
-        html, body {
-            width: 100%; height: 100%;
-            overflow: hidden;
-            background: #050505;
-            font-family: 'Courier New', Courier, monospace;
-        }
-
+        /* ── OVERLAY ── */
         #nick-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.93);
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            z-index: 9999;
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.93);
+            display:flex; flex-direction:column; justify-content:center; align-items:center;
+            z-index:9999;
         }
-        #nick-overlay h2 { color: #0ff; letter-spacing: 2px; font-size: 18px; margin-bottom: 20px; }
+        #nick-overlay h2 { color:#0ff; letter-spacing:2px; font-size:18px; margin-bottom:20px; }
         #nick-input {
-            background: #111; border: 2px solid #f0f; color: #fff;
-            padding: 12px; font-size: 20px; text-align: center;
-            outline: none; margin-bottom: 20px;
-            width: 80%; max-width: 260px; border-radius: 4px;
+            background:#111; border:2px solid #f0f; color:#fff;
+            padding:12px; font-size:20px; text-align:center;
+            outline:none; margin-bottom:20px; width:80%; max-width:260px; border-radius:4px;
         }
         #start-btn {
-            background: #f0f; color: #fff; border: none;
-            padding: 12px 36px; font-size: 16px; font-weight: bold;
-            cursor: pointer; border-radius: 4px;
-            min-width: 140px; min-height: 48px;
+            background:#f0f; color:#fff; border:none;
+            padding:12px 36px; font-size:16px; font-weight:bold;
+            cursor:pointer; border-radius:4px; min-width:140px; min-height:48px;
         }
 
-        #game-wrapper {
-            position: absolute;
-            top: 0; left: 0;
-            transform-origin: top left;
+        /* ── CHANGE NICK ── */
+        #change-nick-btn {
+            position:fixed; top:8px; right:8px;
+            background:transparent; border:1px solid #555; color:#888;
+            font-size:10px; padding:4px 8px; cursor:pointer;
+            font-family:'Courier New',monospace; z-index:50; border-radius:3px;
+            transition: color 0.2s, border-color 0.2s;
         }
+        #change-nick-btn:hover { color:#fff; border-color:#fff; }
+
+        /* ── GAME WRAPPER ── */
+        #game-wrapper { position:absolute; top:0; left:0; transform-origin:top left; }
 
         #scoreboard {
-            width: 404px; background: #000;
-            border: 2px solid #444;
-            border-bottom: 2px solid #888;
-            display: flex; justify-content: space-around;
-            padding: 10px 0; transition: filter 0.5s ease;
+            width:404px; background:#000;
+            border:2px solid #444; border-bottom:2px solid #888;
+            display:flex; justify-content:space-around;
+            padding:10px 0; transition:filter 0.5s ease;
         }
-        .stat-box { text-align: center; }
-        .label { font-size: 11px; display: block; text-transform: uppercase; letter-spacing: 2px; color: #aaa; margin-bottom: 2px; font-weight: bold; }
-        #currentScore { color: #0ff; text-shadow: 0 0 12px #0ff; }
-        #bestScore    { color: #f0f; text-shadow: 0 0 12px #f0f; }
-        .value { font-size: 28px; font-weight: bold; }
+        .stat-box { text-align:center; }
+        .label { font-size:11px; display:block; text-transform:uppercase; letter-spacing:2px; color:#aaa; margin-bottom:2px; font-weight:bold; }
+        #currentScore { color:#0ff; text-shadow:0 0 12px #0ff; }
+        #bestScore    { color:#f0f; text-shadow:0 0 12px #f0f; }
+        .value { font-size:28px; font-weight:bold; }
 
-        #canvas-wrap { position: relative; width: 404px; height: 600px; border-left: 2px solid #444; border-right: 2px solid #444; }
+
+
+        #canvas-wrap { position:relative; width:404px; height:600px; border-left:2px solid #444; border-right:2px solid #444; }
 
         canvas {
-            display: block;
-            background: #000;
-            transition: filter 0.5s ease;
-            touch-action: none;
-            -webkit-tap-highlight-color: transparent;
-            width: 400px; height: 600px;
+            display:block; background:#000;
+            transition:filter 0.5s ease;
+            touch-action:none; -webkit-tap-highlight-color:transparent;
+            width:400px; height:600px;
         }
 
         #game-over-ui {
-            position: absolute; top: 10%; left: 50%;
-            transform: translateX(-50%);
-            width: 280px; max-width: 90%;
-            display: none; flex-direction: column; align-items: center;
-            z-index: 20; pointer-events: none;
+            position:absolute; top:8%; left:50%; transform:translateX(-50%);
+            width:290px; max-width:92%;
+            display:none; flex-direction:column; align-items:center;
+            z-index:20; pointer-events:none;
         }
-        .go-title   { color: #fff; font-size: 32px; font-weight: bold; margin-bottom: 5px; text-shadow: 0 0 15px #f0f; }
-        .replay-btn { color: #fff; font-size: 16px; margin-bottom: 15px; font-weight: bold;
-            text-shadow: 0 0 10px #0ff; animation: blink 1.5s ease-in-out infinite; }
-        @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.95)} }
+        .go-title   { color:#fff; font-size:32px; font-weight:bold; margin-bottom:3px; text-shadow:0 0 15px #f0f; }
+        .go-score   { color:#0ff; font-size:16px; margin-bottom:12px; text-shadow:0 0 8px #0ff; }
+        .replay-btn { color:#fff; font-size:16px; margin-bottom:12px; font-weight:bold; text-shadow:0 0 10px #0ff; animation:blinkAnim 1.5s ease-in-out infinite; }
+        @keyframes blinkAnim { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.95)} }
         #leaderboard { width:100%; background:rgba(20,20,20,0.95); border:2px solid #0ff; color:#fff; padding:10px; text-align:center; box-shadow:0 0 20px rgba(0,255,255,0.3); }
 
         #ad-container {
-            width: 404px; height: 40px;
-            background: #000; border: 2px solid #444;
-            border-top: 2px solid #888;
-            position: relative; overflow: hidden;
-            display: flex; align-items: center; padding-left: 10px;
-            transition: filter 0.5s ease; cursor: pointer;
+            width:404px; height:40px;
+            background:#000; border:2px solid #444; border-top:2px solid #888;
+            position:relative; overflow:hidden;
+            display:flex; align-items:center; padding-left:10px;
+            transition:filter 0.5s ease; cursor:pointer;
         }
         #yt-logo { width:20px; height:14px; background:#f00; border-radius:4px; display:flex; align-items:center; justify-content:center; margin-right:10px; flex-shrink:0; z-index:2; }
         #yt-logo::after { content:""; border-left:5px solid #fff; border-top:3px solid transparent; border-bottom:3px solid transparent; }
@@ -128,7 +144,16 @@
         .blink-fast { animation:blinker .4s step-start infinite; color:#fff !important; }
         @keyframes blinker { 50%{opacity:0} }
 
-        .dimmed { filter: brightness(0.3) blur(2px); pointer-events: none; }
+        .dimmed { filter:brightness(0.3) blur(2px); pointer-events:none; }
+
+        /* ── POWERUP ICONS ── */
+        #powerup-announce {
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            font-size:22px; font-weight:bold; color:#fff;
+            text-shadow:0 0 20px #0ff; opacity:0;
+            pointer-events:none; text-align:center;
+            transition:opacity 0.4s;
+        }
     </style>
 </head>
 <body>
@@ -139,15 +164,20 @@
         <button id="start-btn">ENGAGE</button>
     </div>
 
+    <button id="change-nick-btn">✎ NICK</button>
+
     <div id="game-wrapper">
-        <div id="scoreboard">
+        <div id="scoreboard" style="position:relative;">
             <div class="stat-box"><span class="label">SCORE</span><span id="currentScore" class="value">0</span></div>
             <div class="stat-box"><span class="label">YOUR BEST</span><span id="bestScore" class="value">0</span></div>
+            
         </div>
         <div id="canvas-wrap">
             <canvas id="gameCanvas" width="400" height="600"></canvas>
+            <div id="powerup-announce"></div>
             <div id="game-over-ui">
                 <div class="go-title">GAME OVER</div>
+                <div class="go-score" id="go-score-line"></div>
                 <div class="replay-btn">TAP TO REPLAY</div>
                 <div id="leaderboard">
                     <h3 style="margin-top:0;color:#f0f;font-size:16px;">BEST PLAYERS</h3>
@@ -162,18 +192,28 @@
     </div>
 
 <script>
-    // ── SKALOWANIE ─────────────────────────────────────────────────────
-    const gameWrapper = document.getElementById("game-wrapper");
-    const GAME_W = 404, GAME_H = 694;
-
-    // Pomocniczy div do pomiaru prawdziwej wysokości viewportu (działa w Opera, Chrome, Safari)
+    // Firebase queue — wywołuje cb gdy Firebase gotowe
+    window._fbQueue = [];
+    window._fbCall = function(cb) {
+        if (window._firebaseReady) { cb(); }
+        else { window._fbQueue.push(cb); }
+    };
+    window._onFirebaseReady = function() {
+        window._firebaseReady = true;
+        window._fbQueue.forEach(function(cb){ cb(); });
+        window._fbQueue = [];
+    };
+</script>
+<script>
+    // ── VIEWPORT / SKALOWANIE ─────────────────────────────────────────
+    var gameWrapper = document.getElementById("game-wrapper");
+    var GAME_W = 404, GAME_H = 694;
     var vpHelper = document.createElement('div');
     vpHelper.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:100dvh;pointer-events:none;visibility:hidden;';
     document.body.appendChild(vpHelper);
 
     function scaleGame() {
         var vw = window.innerWidth;
-        // Używamy dvh przez helper — poprawnie obsługuje pasek adresu w każdej przeglądarce
         var vh = vpHelper.getBoundingClientRect().height || window.innerHeight;
         var scale = Math.min(vw / GAME_W, (vh * 0.93) / GAME_H);
         var tx = (vw - GAME_W * scale) / 2;
@@ -182,22 +222,23 @@
     }
     window.addEventListener('resize', scaleGame);
     window.addEventListener('orientationchange', function(){ setTimeout(scaleGame, 350); });
-    // Dodatkowe odpalenie po załadowaniu — Opera czasem potrzebuje chwili
     window.addEventListener('load', function(){ setTimeout(scaleGame, 100); });
     scaleGame();
 
-    // ── DOM ────────────────────────────────────────────────────────────
-    const canvas      = document.getElementById("gameCanvas");
-    const ctx         = canvas.getContext("2d", { alpha: false });
-    const scoreEl     = document.getElementById("currentScore");
-    const bestScoreEl = document.getElementById("bestScore");
-    const scoreboard  = document.getElementById("scoreboard");
-    const gameOverUI  = document.getElementById("game-over-ui");
-    const nickOverlay = document.getElementById("nick-overlay");
-    const nickInput   = document.getElementById("nick-input");
-    const adContainer = document.getElementById("ad-container");
+    // ── DOM ───────────────────────────────────────────────────────────
+    var canvas        = document.getElementById("gameCanvas");
+    var ctx           = canvas.getContext("2d", {alpha:false});
+    var scoreEl       = document.getElementById("currentScore");
+    var bestScoreEl   = document.getElementById("bestScore");
+    var scoreboard    = document.getElementById("scoreboard");
+    var gameOverUI    = document.getElementById("game-over-ui");
+    var goScoreLine   = document.getElementById("go-score-line");
+    var nickOverlay   = document.getElementById("nick-overlay");
+    var nickInput     = document.getElementById("nick-input");
+    var adContainer   = document.getElementById("ad-container");
+    var pwAnnounce    = document.getElementById("powerup-announce");
 
-    // ── NICK ───────────────────────────────────────────────────────────
+    // ── NICK ──────────────────────────────────────────────────────────
     window.playerNick = localStorage.getItem("neonBallNick") || "";
     if (window.playerNick) nickInput.value = window.playerNick;
 
@@ -207,48 +248,47 @@
         window.playerNick = val;
         localStorage.setItem("neonBallNick", val);
         nickOverlay.style.display = "none";
-        gameActive = true;
-        gameStarted = false;
-        if (window.loadLeaderboard) window.loadLeaderboard();
+        // Stan: czeka na tap, nic się nie rusza
+        STATE = "WAIT_TAP";
+        ball.x = 100; ball.y = 300; ball.vel = 0; trailClear();
+        window._fbCall(function(){ window.loadLeaderboard(); });
     }
     document.getElementById("start-btn").addEventListener("click", doStart);
     nickInput.addEventListener("keydown", function(e){ if(e.key==="Enter") doStart(); });
 
-    // ── REKLAMA ────────────────────────────────────────────────────────
+    document.getElementById("change-nick-btn").addEventListener("click", function(){
+        nickOverlay.style.display = "flex";
+        STATE = "NICK";
+    });
+
+    // ── REKLAMA ───────────────────────────────────────────────────────
     var myVideos = ["L3JZS2R_D6k","BJU6OyDPMEY","BzM9CYuPW8M"];
     var adTexts  = ["Build LEGO Cars!","Epic MOCs!"];
-    var adText   = document.getElementById("ad-text");
+    var adTextEl = document.getElementById("ad-text");
     var isAdRunning = false;
-
     function openRandomVideo() {
-        window.open("https://www.youtube.com/watch?v="+myVideos[Math.floor(Math.random()*myVideos.length)], "_blank");
+        window.open("https://www.youtube.com/watch?v="+myVideos[Math.floor(Math.random()*myVideos.length)],"_blank");
     }
     adContainer.addEventListener("click", openRandomVideo);
-    adContainer.addEventListener("touchend", function(e){ e.preventDefault(); openRandomVideo(); }, { passive: false });
-
+    adContainer.addEventListener("touchend", function(e){ e.preventDefault(); openRandomVideo(); }, {passive:false});
     function runAdCycle() {
-        if (isAdRunning) return;
-        isAdRunning = true;
-        adText.innerText = adTexts[Math.floor(Math.random()*adTexts.length)];
-        var pos = 360;
-        var scroll = setInterval(function(){
-            pos -= 2.2; adText.style.transform = "translateX("+pos+"px)";
-            if (pos <= 5) {
-                clearInterval(scroll); adText.style.transform = "translateX(5px)";
-                setTimeout(function(){
-                    adText.innerText = "CLICK TO WATCH!"; adText.classList.add("blink-fast");
-                    setTimeout(function(){
-                        adText.classList.remove("blink-fast"); adText.innerText = "";
-                        adText.style.transform = "translateX(360px)"; isAdRunning = false;
-                    }, 4000);
-                }, 1000);
-            }
-        }, 20);
+        if (isAdRunning) return; isAdRunning = true;
+        adTextEl.innerText = adTexts[Math.floor(Math.random()*adTexts.length)];
+        adTextEl.style.transition = "transform 4s linear";
+        adTextEl.style.transform = "translateX(5px)";
+        setTimeout(function(){
+            adTextEl.innerText = "CLICK TO WATCH!"; adTextEl.classList.add("blink-fast");
+            setTimeout(function(){
+                adTextEl.classList.remove("blink-fast");
+                adTextEl.style.transition = "none";
+                adTextEl.style.transform = "translateX(360px)";
+                isAdRunning = false;
+            }, 4000);
+        }, 4200);
     }
-    setTimeout(runAdCycle, 3000);
-    setInterval(runAdCycle, 30000);
+    setTimeout(runAdCycle, 3000); setInterval(runAdCycle, 30000);
 
-    // ── AUDIO ──────────────────────────────────────────────────────────
+    // ── AUDIO ─────────────────────────────────────────────────────────
     var audioCtx = null;
     function getAC() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -256,196 +296,531 @@
     }
     function playSound(f,t,d,v) {
         try {
-            var ac = getAC();
-            if (ac.state==='suspended') ac.resume();
-            var o = ac.createOscillator(), g = ac.createGain();
-            o.type = t; o.frequency.setValueAtTime(f, ac.currentTime);
-            g.gain.setValueAtTime(v, ac.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+d);
+            var ac=getAC(); if(ac.state==='suspended') ac.resume();
+            var o=ac.createOscillator(), g=ac.createGain();
+            o.type=t; o.frequency.setValueAtTime(f,ac.currentTime);
+            g.gain.setValueAtTime(v,ac.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001,ac.currentTime+d);
             o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+d);
         } catch(e){}
     }
+    function playMelody(notes) { // [{f,t,d,v,delay}]
+        notes.forEach(function(n){ setTimeout(function(){ playSound(n.f,n.t,n.d,n.v); }, n.delay||0); });
+    }
     var sfx = {
-        jump:  function(){ playSound(480,'triangle',0.1,0.3); },
-        score: function(){ playSound(950,'sine',0.2,0.12); },
-        hit:   function(){ playSound(120,'sawtooth',0.4,0.2); playSound(80,'sine',0.5,0.2); }
+        jump:    function(){ playSound(480,'triangle',0.1,0.3); },
+        score:   function(){ playSound(950,'sine',0.12,0.1); },
+        hit:     function(){ playSound(120,'sawtooth',0.4,0.2); playSound(80,'sine',0.5,0.2); },
+        shield:  function(){ playSound(660,'sine',0.3,0.15); playSound(880,'sine',0.3,0.1); },
+        slow:    function(){ playSound(300,'triangle',0.4,0.2); playSound(200,'triangle',0.4,0.15); },
+        combo:   function(n){ playSound(400+n*80,'sine',0.15,0.15); },
+        milestone: function(){ playMelody([
+            {f:523,t:'sine',d:0.15,v:0.2,delay:0},
+            {f:659,t:'sine',d:0.15,v:0.2,delay:120},
+            {f:784,t:'sine',d:0.25,v:0.2,delay:240}
+        ]); }
     };
 
-    // ── TŁO ────────────────────────────────────────────────────────────
+    // ── TŁO: siatka pre-renderowana raz, gwiazdy na głównym ctx ──────
     var bgCanvas = document.createElement('canvas');
     bgCanvas.width = 400; bgCanvas.height = 600;
     var bgCtx = bgCanvas.getContext('2d');
     bgCtx.fillStyle = "#000"; bgCtx.fillRect(0,0,400,600);
-    bgCtx.strokeStyle = "#151515"; bgCtx.beginPath();
+    bgCtx.strokeStyle = "#111"; bgCtx.lineWidth = 1; bgCtx.beginPath();
     for (var i=0; i<=400; i+=40){ bgCtx.moveTo(i,0); bgCtx.lineTo(i,600); }
     for (var i=0; i<=600; i+=40){ bgCtx.moveTo(0,i); bgCtx.lineTo(400,i); }
     bgCtx.stroke();
 
-    // ── TRAIL ──────────────────────────────────────────────────────────
-    var TRAIL_LEN = 12;
+    // Gwiazdy — rysowane bezpośrednio na ctx, bez dodatkowego canvas
+    var stars = [];
+    for (var i=0; i<40; i++) {
+        stars.push({
+            x: Math.random()*400,
+            y: Math.random()*600,
+            r: Math.random()*1.2+0.3,
+            speed: Math.random()*0.3+0.05,
+            alpha: Math.random()*0.5+0.2
+        });
+    }
+
+    function drawBg(frame) {
+        // Siatka z pre-renderowanego canvasu (zero draw calls dla siatki)
+        ctx.drawImage(bgCanvas, 0, 0);
+        // Gwiazdy bezpośrednio
+        ctx.fillStyle = "#fff";
+        for (var i=0; i<stars.length; i++) {
+            var s = stars[i];
+            s.y += s.speed;
+            if (s.y > 600) { s.y = 0; s.x = Math.random()*400; }
+            ctx.globalAlpha = s.alpha;
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    // ── TRAIL ─────────────────────────────────────────────────────────
+    var TRAIL_LEN = 14;
     var trailX = new Float32Array(TRAIL_LEN);
     var trailY = new Float32Array(TRAIL_LEN);
     var trailHead = 0, trailCount = 0;
     function trailPush(x,y){ trailX[trailHead]=x; trailY[trailHead]=y; trailHead=(trailHead+1)%TRAIL_LEN; if(trailCount<TRAIL_LEN)trailCount++; }
     function trailClear(){ trailHead=0; trailCount=0; }
 
-    // ── PARTICLES ──────────────────────────────────────────────────────
+    // ── PARTICLES ─────────────────────────────────────────────────────
     var POOL = [];
-    for (var i=0; i<60; i++) POOL.push({x:0,y:0,vx:0,vy:0,r:0,a:0,on:false});
+    for (var i=0; i<80; i++) POOL.push({x:0,y:0,vx:0,vy:0,r:0,a:0,color:"#f0f",on:false});
     var activePart = 0;
-    function explode(x,y) {
+    function explode(x,y,color,count) {
+        color = color||"#f0f"; count = count||20;
         var n=0;
-        for (var i=0; i<60&&n<20; i++) {
+        for (var i=0; i<80&&n<count; i++) {
             if (!POOL[i].on) {
                 var p=POOL[i]; p.x=x; p.y=y;
-                p.vx=(Math.random()-0.5)*12; p.vy=(Math.random()-0.5)*12;
-                p.r=Math.random()*3+1; p.a=1; p.on=true;
+                p.vx=(Math.random()-0.5)*14; p.vy=(Math.random()-0.5)*14;
+                p.r=Math.random()*3+1; p.a=1; p.color=color; p.on=true;
                 n++; activePart++;
             }
         }
     }
 
-    // ── STAN ───────────────────────────────────────────────────────────
+    // ── SCREEN FLASH ──────────────────────────────────────────────────
+    var flashAlpha = 0, flashColor = "#fff";
+    function flash(color, alpha) { flashColor=color; flashAlpha=alpha||0.3; }
+
+    // ── STAN GRY ──────────────────────────────────────────────────────
     var score=0, bestScore=Number(localStorage.getItem("neonBallBestScore"))||0;
     bestScoreEl.innerText = bestScore;
-    var gameActive=false, gameStarted=false, canRestart=true, firstLoad=true, frameCount=0;
-    var ball = {x:100, y:300, r:12, gravity:0.6, vel:0, jump:-8, color:"#f0f"};
-    var pipes=[], PW=55, BASE_GAP=165, SPEED=3.2;
-    var PIPE_CLR = {STATIC:"#0ff", MOVING:"#0f0", SHRINKING:"#ff0"};
-    var FRAME_MS = 1000/60, lastTime=0;
+    // STATE: "NICK" | "WAIT_TAP" | "PLAYING" | "DEAD"
+    var STATE = "NICK";
+    var frameCount=0;
+    // Aliasy dla czytelności w update/draw
+    function isPlaying(){ return STATE==="PLAYING"; }
+    var combo=0, maxCombo=0;
+    var comboHUD = {text:'', color:'#fff', alpha:0, scale:1, timer:0};
+    var shieldActive=false, slowActive=false, slowTimer=0, turboActive=false, turboTimer=0, scoreMultiplier=1;
 
-    function createPipe() {
-        var types=['STATIC','MOVING','SHRINKING'];
-        var type=types[Math.floor(Math.random()*3)];
-        var red=Math.min(0.25,Math.floor(score/20)*0.05);
-        var gap=BASE_GAP*(1-red);
-        if(type==='STATIC') gap*=0.90;
-        var h=Math.floor(Math.random()*(600-gap-200))+100;
-        pipes.push({x:400,top:h,baseTop:h,passed:false,type,offset:Math.random()*Math.PI*2,gap:gap,maxGap:gap,shrinkDir:Math.random()>0.5?'TOP':'BOTTOM'});
+
+    var ball = {x:100, y:300, r:12, gravity:0.6, vel:0, jump:-8, color:"#f0f", trailColor:"#f0f"};
+    var pipes=[], PW=55, BASE_GAP=165, SPEED=3.2, currentSpeed=3.2;
+    var PIPE_CLR = {STATIC:"#0ff", MOVING:"#0f0", SHRINKING:"#ff0"};
+    var FRAME_MS=1000/60, lastTime=0;
+
+    // Power-upy
+    var powerups = []; // {x, y, type, anim}
+    var POWERUP_TYPES = ['SHIELD','SLOW','TURBO'];
+    var POWERUP_CLR   = {SHIELD:'#00ffff', SLOW:'#ff8800', TURBO:'#ff2266'};
+    var POWERUP_ICON  = {SHIELD:'🛡', SLOW:'⏱', TURBO:'⚡'};
+    var nextPowerupScore = 15; // pojawia sie co ~15 punktów
+
+    // Milestone co ile punktów
+    var MILESTONES = [10,25,50,100,200];
+
+    function comboMultiplier() {
+        if (combo >= 15) return {mult:4, color:'#ff4444'};
+        if (combo >= 10) return {mult:3, color:'#ffff00'};
+        if (combo >= 5)  return {mult:2, color:'#44ff44'};
+        return {mult:1, color:'#ffffff'};
     }
 
-    // ── DRAW ───────────────────────────────────────────────────────────
-    function draw() {
-        ctx.drawImage(bgCanvas,0,0);
-        ctx.fillStyle="#022"; ctx.lineWidth=3;
-        for(var i=0;i<pipes.length;i++){ var p=pipes[i],bY=p.top+p.gap; ctx.fillRect(p.x,0,PW,p.top); ctx.fillRect(p.x,bY,PW,600-bY); }
-        for(var i=0;i<pipes.length;i++){ var p=pipes[i],bY=p.top+p.gap; ctx.strokeStyle=PIPE_CLR[p.type]; ctx.strokeRect(p.x,0,PW,p.top); ctx.strokeRect(p.x,bY,PW,600-bY); }
+    // ── PIPE ──────────────────────────────────────────────────────────
+    function createPipe() {
+        // Pierwsze 5 rur zawsze STATIC (łagodny start)
+        var typePool;
+        if (score < 5)       typePool = ['STATIC','STATIC','STATIC'];
+        else if (score < 15) typePool = ['STATIC','STATIC','MOVING'];
+        else                 typePool = ['STATIC','MOVING','SHRINKING'];
 
-        if (gameActive||!gameStarted) {
-            ctx.fillStyle=ball.color;
-            for(var i=0;i<trailCount;i++){
+        var type = typePool[Math.floor(Math.random()*typePool.length)];
+        var red  = Math.min(0.35, Math.floor(score/15)*0.05);
+        var gap  = BASE_GAP*(1-red);
+        if (type==='STATIC') gap *= 0.90;
+        var h = Math.floor(Math.random()*(600-gap-200))+100;
+        pipes.push({x:400, top:h, baseTop:h, passed:false, type:type,
+            offset:Math.random()*Math.PI*2, gap:gap, maxGap:gap,
+            shrinkDir:Math.random()>0.5?'TOP':'BOTTOM',
+            flashTimer:0});
+    }
+
+    // ── POWERUP SPAWN ─────────────────────────────────────────────────
+    function trySpawnPowerup() {
+        if (score < nextPowerupScore || powerups.length > 0) return;
+        if (pipes.length < 1) return;
+
+        // Moneta pojawia się razem z nową rurą — w środku jej szczeliny
+        // Zapamiętaj dane ostatniej rury w momencie spawnu
+        var p = pipes[pipes.length - 1];
+        var gapCenter = p.top + p.gap / 2;
+        // Losuj w środkowej połowie szczeliny (z marginesem 20px od krawędzi)
+        var margin = 20;
+        var halfRange = Math.max(0, p.gap / 2 - margin);
+        var spawnY = gapCenter + (Math.random() * 2 - 1) * halfRange;
+        // X: środek rury — moneta leci razem z rurą (taki sam ruch)
+        // Przechowujemy referencję do rury żeby synchronizować pozycję X
+        var availableTypes = shieldActive
+            ? POWERUP_TYPES.filter(function(t){ return t !== 'SHIELD'; })
+            : POWERUP_TYPES;
+        var type = availableTypes[Math.floor(Math.random()*availableTypes.length)];
+        powerups.push({x:p.x + PW/2, y:spawnY, type:type, anim:0, pipe:p});
+        nextPowerupScore = score + 12 + Math.floor(Math.random()*8);
+    }
+
+    function announceText(txt, color) {
+        pwAnnounce.innerText = txt;
+        pwAnnounce.style.color = color||'#fff';
+        pwAnnounce.style.textShadow = '0 0 20px '+( color||'#fff');
+        pwAnnounce.style.opacity = '1';
+        setTimeout(function(){ pwAnnounce.style.opacity = '0'; }, 1200);
+    }
+
+    // ── DRAW ──────────────────────────────────────────────────────────
+    function draw() {
+        drawBg(frameCount);
+
+        // Slow-mo overlay
+        if (slowActive) {
+            ctx.fillStyle = "rgba(0,80,150,0.08)";
+            ctx.fillRect(0,0,400,600);
+        }
+        // Turbo overlay — czerwona poświata + migające krawędzie
+        if (turboActive) {
+            ctx.strokeStyle = "#ff2266";
+            ctx.lineWidth = 5;
+            ctx.globalAlpha = 0.4;
+            ctx.strokeRect(3,3,394,594);
+            ctx.globalAlpha = 1;
+        }
+
+        // Rury
+        ctx.lineWidth = 3;
+        for (var i=0; i<pipes.length; i++) {
+            var p=pipes[i], bY=p.top+p.gap;
+            // Flash przy przejściu
+            if (p.flashTimer > 0) {
+                ctx.fillStyle = PIPE_CLR[p.type];
+                ctx.globalAlpha = p.flashTimer/8 * 0.4;
+            } else {
+                ctx.fillStyle = "#022"; ctx.globalAlpha = 1;
+            }
+            ctx.fillRect(p.x,0,PW,p.top);
+            ctx.fillRect(p.x,bY,PW,600-bY);
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = PIPE_CLR[p.type];
+            ctx.strokeRect(p.x,0,PW,p.top);
+            ctx.strokeRect(p.x,bY,PW,600-bY);
+            if (p.flashTimer > 0) p.flashTimer--;
+        }
+
+        // Power-upy
+        ctx.textAlign = "center";
+        for (var i=0; i<powerups.length; i++) {
+            var pw = powerups[i];
+            ctx.globalAlpha = 0.9;
+            ctx.fillStyle = POWERUP_CLR[pw.type];
+            ctx.beginPath(); ctx.arc(pw.x, pw.y, 12, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(pw.x, pw.y, 12, 0, Math.PI*2); ctx.stroke();
+            ctx.fillStyle="#fff"; ctx.font="14px Arial";
+            ctx.fillText(POWERUP_ICON[pw.type], pw.x, pw.y+5);
+        }
+
+        // Shield ring
+        if (shieldActive) {
+            ctx.strokeStyle = "#0ff";
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r+6, 0, Math.PI*2); ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+
+        if (STATE === "PLAYING" || STATE === "WAIT_TAP") {
+            // Trail
+            ctx.fillStyle = ball.trailColor;
+            for (var i=0; i<trailCount; i++) {
                 var idx=(trailHead-1-i+TRAIL_LEN)%TRAIL_LEN;
-                var r=ball.r*(1-i/15); if(r<=0)continue;
-                ctx.globalAlpha=(1-i/trailCount)*0.4;
+                var r=ball.r*(1-i/15); if(r<=0) continue;
+                ctx.globalAlpha=(1-i/trailCount)*0.45;
                 ctx.beginPath(); ctx.arc(trailX[idx]-i*2,trailY[idx],r,0,Math.PI*2); ctx.fill();
             }
             ctx.globalAlpha=1;
+            // Piłka
             ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
             ctx.fillStyle=ball.color; ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.fill(); ctx.stroke();
         }
 
-        if(activePart>0){
-            for(var i=0;i<60;i++){
-                var p=POOL[i]; if(!p.on)continue;
-                p.x+=p.vx; p.y+=p.vy; p.a-=0.02;
+        // Particles — aktualizuj i rysuj zawsze (też podczas DYING/DEAD)
+        if (activePart>0) {
+            for (var i=0; i<80; i++) {
+                var p=POOL[i]; if(!p.on) continue;
+                p.x+=p.vx; p.y+=p.vy; p.vy+=0.3; p.a-=0.022;
                 if(p.a<=0){p.on=false;activePart--;continue;}
-                ctx.globalAlpha=p.a; ctx.fillStyle=ball.color;
+                ctx.globalAlpha=p.a; ctx.fillStyle=p.color;
                 ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
             }
             ctx.globalAlpha=1;
         }
 
-        if(firstLoad&&gameActive&&!gameStarted){
-            ctx.fillStyle="#fff"; ctx.font="bold 18px Arial"; ctx.textAlign="center";
-            ctx.fillText("TAP TO START",200,350);
+        // TAP TO PLAY ekran
+        // Combo HUD
+        if (comboHUD.alpha > 0) {
+            comboHUD.timer--;
+            if (comboHUD.timer <= 0) comboHUD.alpha = Math.max(0, comboHUD.alpha - 0.06);
+            ctx.save();
+            ctx.globalAlpha = comboHUD.alpha;
+            ctx.textAlign = "center";
+            ctx.font = "bold 20px 'Courier New'";
+            ctx.shadowColor = comboHUD.color;
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = comboHUD.color;
+            ctx.fillText(comboHUD.text, 200, 40);
+            ctx.shadowBlur = 0;
+            ctx.restore();
         }
+
+        if (STATE === "WAIT_TAP") {
+            ctx.fillStyle="rgba(0,0,0,0.45)"; ctx.fillRect(0,0,400,600);
+            ctx.fillStyle="#0ff"; ctx.font="bold 22px 'Courier New'"; ctx.textAlign="center";
+            ctx.shadowColor="#0ff"; ctx.shadowBlur=15;
+            ctx.fillText("TAP TO PLAY", 200, 320);
+            ctx.shadowBlur=0;
+        }
+
+        // Screen flash
+        if (flashAlpha > 0) {
+            ctx.globalAlpha = flashAlpha;
+            ctx.fillStyle = flashColor;
+            ctx.fillRect(0,0,400,600);
+            ctx.globalAlpha = 1;
+            flashAlpha = Math.max(0, flashAlpha-0.04);
+        }
+
+
     }
 
-    // ── UPDATE ─────────────────────────────────────────────────────────
+    // ── COUNTDOWN ─────────────────────────────────────────────────────
+
+
+    // ── UPDATE ────────────────────────────────────────────────────────
     function update() {
-        if(!gameActive||!gameStarted) return;
-        frameCount++; ball.vel+=ball.gravity; ball.y+=ball.vel;
-        trailPush(ball.x,ball.y);
-        if(ball.y+ball.r>600||ball.y-ball.r<0){gameOver();return;}
-        if(!pipes.length||pipes[pipes.length-1].x<180) createPipe();
-        for(var i=pipes.length-1;i>=0;i--){
-            var p=pipes[i]; p.x-=SPEED;
-            if(p.type==='MOVING') p.top=p.baseTop+Math.sin(frameCount*0.04+p.offset)*50;
-            else if(p.type==='SHRINKING'){
+        if (STATE !== "PLAYING") return; // DYING, DEAD, WAIT_TAP, NICK — wszystko blokowane
+        frameCount++;
+
+        // Slow-mo timer
+        if (slowActive) {
+            slowTimer--;
+            if (slowTimer <= 0) { slowActive=false; if(!turboActive) currentSpeed=SPEED; }
+        }
+        if (turboActive) {
+            turboTimer--;
+            if (turboTimer <= 0) { turboActive=false; scoreMultiplier=1; if(!slowActive) currentSpeed=SPEED; }
+        }
+
+        // Dynamiczna prędkość bazowa rośnie z wynikiem
+        var baseSpeed = SPEED + Math.min(0.8, Math.floor(score/10)*0.1);
+        if (!slowActive && !turboActive) currentSpeed = baseSpeed;
+
+        ball.vel += ball.gravity; if(ball.vel > 12) ball.vel = 12; ball.y += ball.vel;
+        trailPush(ball.x, ball.y);
+
+        if (ball.y+ball.r>600 || ball.y-ball.r<0) { gameOver(); return; }
+        if (!pipes.length || pipes[pipes.length-1].x < 180) createPipe();
+        trySpawnPowerup();
+
+        // Power-upy kolizja
+        for (var i=powerups.length-1; i>=0; i--) {
+            var pw = powerups[i];
+            // Jeśli moneta ma przypisaną rurę — jedź razem z nią
+            if (pw.pipe) {
+                pw.x = pw.pipe.x + PW/2;
+                // Jeśli rura zniknęła z listy — odpinamy monetę
+                if (pipes.indexOf(pw.pipe) === -1) pw.pipe = null;
+            } else {
+                pw.x -= currentSpeed;
+            }
+            var dx=ball.x-pw.x, dy=ball.y-pw.y;
+            if (Math.sqrt(dx*dx+dy*dy) < ball.r+12) {
+                if (pw.type==='SHIELD') {
+                    shieldActive=true;
+                    sfx.shield(); flash('#0ff',0.25);
+                    announceText('🛡 SHIELD!','#0ff');
+                } else if (pw.type==='SLOW') {
+                    slowActive=true; slowTimer=200; currentSpeed=SPEED*0.55;
+                    sfx.slow(); flash('#ff8800',0.2);
+                    announceText('⏱ SLOW MO!','#ff8800');
+                } else if (pw.type==='TURBO') {
+                    turboActive=true; turboTimer=240; scoreMultiplier=2; currentSpeed=SPEED*1.5;
+                    flash('#ff2266',0.3);
+                    announceText('⚡ TURBO x2!','#ff2266');
+                    playSound(220,'sawtooth',0.15,0.2); playSound(440,'sawtooth',0.15,0.2);
+                }
+                explode(pw.x,pw.y,POWERUP_CLR[pw.type],12);
+                powerups.splice(i,1);
+                continue;
+            }
+            if (pw.x+14 < 0) powerups.splice(i,1);
+        }
+
+        // Rury
+        for (var i=pipes.length-1; i>=0; i--) {
+            var p=pipes[i];
+            p.x -= currentSpeed;
+            if (p.type==='MOVING')
+                p.top = p.baseTop+Math.sin(frameCount*0.04+p.offset)*50;
+            else if (p.type==='SHRINKING'){
                 var sv=Math.abs(Math.sin(frameCount*0.05+p.offset))*55;
                 if(p.shrinkDir==='TOP'){p.top=p.baseTop+sv;p.gap=p.maxGap-sv;}
                 else p.gap=p.maxGap-sv;
             }
-            if(ball.x+ball.r>p.x&&ball.x-ball.r<p.x+PW&&(ball.y-ball.r<p.top||ball.y+ball.r>p.top+p.gap)){gameOver();return;}
-            if(!p.passed&&p.x+PW<ball.x){
-                score++;p.passed=true;scoreEl.innerText=score;sfx.score();
-                if(score>bestScore){bestScore=score;bestScoreEl.innerText=bestScore;localStorage.setItem("neonBallBestScore",bestScore);}
+
+            // Kolizja
+            if (ball.x+ball.r>p.x && ball.x-ball.r<p.x+PW &&
+                (ball.y-ball.r<p.top || ball.y+ball.r>p.top+p.gap)) {
+                if (shieldActive) {
+                    shieldActive=false;
+                    // TURBO znika razem ze shieldem
+                    if (turboActive) {
+                        turboActive=false; scoreMultiplier=1;
+                        currentSpeed = slowActive ? SPEED*0.55 : SPEED + Math.min(0.8, Math.floor(score/10)*0.1);
+                    }
+                    // Combo resetuje się — uderzyłeś w ścianę
+                    combo=0; ball.trailColor="#f0f"; comboHUD.alpha=0;
+                    flash('#0ff',0.5);
+                    explode(p.x + PW/2, p.top/2, '#0ff', 8);
+                    explode(p.x + PW/2, p.top + p.gap + (600-p.top-p.gap)/2, '#0ff', 8);
+                    sfx.shield();
+                    pipes.splice(i, 1);
+                    continue;
+                } else {
+                    gameOver(); return;
+                }
             }
-            if(p.x+PW<0) pipes.splice(i,1);
+
+            // Punkt
+            if (!p.passed && p.x+PW < ball.x) {
+                combo++;
+                if (combo>maxCombo) maxCombo=combo;
+
+                // Mnożnik z combo (niezależny od TURBO)
+                var cm = comboMultiplier();
+                var totalMult = cm.mult * scoreMultiplier;
+                score += totalMult; p.passed=true;
+                p.flashTimer=8;
+
+                // Kolor śladu
+                ball.trailColor = cm.color === '#ffffff' ? '#f0f' : cm.color;
+
+                scoreEl.innerText=score; sfx.score();
+
+                // Combo HUD na canvas
+                if (combo >= 2) {
+                    var label = combo >= 5 ? 'x'+totalMult+' COMBO '+combo+'!' : 'COMBO '+combo;
+                    comboHUD.text  = label;
+                    comboHUD.color = cm.color;
+                    comboHUD.alpha = 1;
+                    comboHUD.scale = 1.3;
+                    comboHUD.timer = 55; // klatek do wygaśnięcia
+                    sfx.combo(Math.min(combo,8));
+                    if (combo >= 5) flash(cm.color, 0.07);
+                }
+
+                // Milestone — sprawdź czy właśnie przekroczyliśmy próg
+                var prevScore = score - scoreMultiplier;
+                var hitMilestone = MILESTONES.some(function(m){ return prevScore < m && score >= m; });
+                if (hitMilestone) {
+                    sfx.milestone();
+                    flash('#f0f',0.4);
+                    explode(ball.x,ball.y,'#f0f',15);
+                    announceText('★ '+score+' POINTS! ★','#f0f');
+                }
+
+                if (score>bestScore) {
+                    bestScore=score; bestScoreEl.innerText=bestScore;
+                    localStorage.setItem("neonBallBestScore",bestScore);
+                }
+            }
+            if (p.x+PW<0) pipes.splice(i,1);
         }
     }
 
-    // ── GAME OVER ──────────────────────────────────────────────────────
+    // ── GAME OVER ─────────────────────────────────────────────────────
     function gameOver() {
-        if(!gameActive) return;
-        sfx.hit(); explode(ball.x,ball.y);
-        gameActive=false; canRestart=false;
+        if (STATE !== "PLAYING") return;
+        STATE = "DYING"; // zablokuj input podczas animacji
+        sfx.hit(); flash('#f00',0.5);
+        explode(ball.x,ball.y,ball.color,25);
+        shieldActive=false; slowActive=false; turboActive=false; scoreMultiplier=1;
+        combo=0; ball.trailColor="#f0f"; comboHUD.alpha=0;
+        goScoreLine.innerText = "Score: "+score+(maxCombo>=3?" | Best combo: x"+maxCombo:"");
         setTimeout(function(){
             canvas.classList.add('dimmed');
             scoreboard.classList.add('dimmed');
             adContainer.classList.add('dimmed');
             gameOverUI.style.display="flex";
-            if(window.saveScore) window.saveScore(window.playerNick,score);
-            setTimeout(function(){canRestart=true;},300);
-        },200);
+            window._fbCall(function(){ window.saveScore(window.playerNick, Number(score)); });
+            setTimeout(function(){ STATE = "DEAD"; }, 200);
+        },400);
     }
 
-    // ── INPUT — TYLKO canvas, overlay ma własne handlery ───────────────
+    // ── INPUT ─────────────────────────────────────────────────────────
     function handleAction(e) {
-        if(e.cancelable) e.preventDefault();
-        if(gameActive){
-            if(!gameStarted){gameStarted=true;firstLoad=false;}
-            ball.vel=ball.jump; sfx.jump();
-        } else if(canRestart){
+        if(STATE === "NICK") return;
+        if(e && e.cancelable) e.preventDefault();           // overlay widoczny — ignoruj
+        if(STATE === "WAIT_TAP") {             // czeka na pierwszy tap
+            STATE = "PLAYING";
+            ball.vel = ball.jump; sfx.jump();
+            return;
+        }
+        if(STATE === "PLAYING") {              // gra trwa — skocz
+            ball.vel = ball.jump; sfx.jump();
+            return;
+        }
+        if(STATE === "DEAD") {                 // game over — restart
             canvas.classList.remove('dimmed');
             scoreboard.classList.remove('dimmed');
             adContainer.classList.remove('dimmed');
-            ball.x=100;ball.y=300;ball.vel=ball.jump;
-            pipes=[];score=0;scoreEl.innerText="0";
-            trailClear();activePart=0;
-            for(var i=0;i<60;i++) POOL[i].on=false;
-            frameCount=0;gameActive=true;gameStarted=true;firstLoad=false;
-            gameOverUI.style.display="none"; sfx.jump();
+            ball.x=100; ball.y=300; ball.vel=0;
+            pipes=[]; powerups=[]; score=0; scoreEl.innerText="0";
+            combo=0; maxCombo=0; ball.trailColor="#f0f"; comboHUD.alpha=0;
+            shieldActive=false; slowActive=false; turboActive=false;
+            scoreMultiplier=1; currentSpeed=SPEED;
+            trailClear(); activePart=0;
+            for(var i=0;i<80;i++) POOL[i].on=false;
+            frameCount=0; nextPowerupScore=15;
+            gameOverUI.style.display="none";
+            STATE = "PLAYING";
+            ball.vel = ball.jump; sfx.jump();
         }
     }
 
-    // Podczas gry — tylko canvas
-    canvas.addEventListener("touchstart", handleAction, {passive:false});
-    canvas.addEventListener("mousedown",  handleAction);
-    // Po game over canvas ma pointer-events:none (dimmed) — słuchamy na document
+    // Jeden listener na canvas, jeden na document (dla klawiatury i obszaru poza canvas)
+    canvas.addEventListener("touchstart", function(e){ handleAction(e); }, {passive:false});
+    canvas.addEventListener("mousedown",  function(e){ handleAction(e); });
     document.addEventListener("touchstart", function(e){
-        if(nickOverlay.style.display!=="none") return;  // overlay widoczny - ignoruj
-        if(!canRestart || gameActive) return;           // gra trwa - ignoruj
+        if(STATE === "NICK") return;
+        if(e.target === canvas) return;
         handleAction(e);
     }, {passive:false});
     document.addEventListener("mousedown", function(e){
-        if(nickOverlay.style.display!=="none") return;
-        if(!canRestart || gameActive) return;
+        if(STATE === "NICK") return;
+        if(e.target === canvas) return;
         handleAction(e);
     });
     window.addEventListener("keydown", function(e){
-        if(e.code!=="Space") return;
-        if(nickOverlay.style.display!=="none") return;
+        if(e.code !== "Space") return;
+        if(document.activeElement === nickInput) return; // nie blokuj wpisywania
+        if(STATE === "NICK") return;
+        e.preventDefault();
         handleAction(e);
     });
 
-    // ── PĘTLA ──────────────────────────────────────────────────────────
+    // ── PĘTLA ─────────────────────────────────────────────────────────
     function loop(ts) {
-        requestAnimationFrame(loop);
         var dt=ts-lastTime;
-        if(dt<FRAME_MS) return;
-        lastTime=ts-(dt%FRAME_MS);
-        update(); draw();
+        if(dt>=FRAME_MS) {
+            lastTime=ts-(dt%FRAME_MS);
+            update(); draw();
+        }
+        requestAnimationFrame(loop);
     }
     requestAnimationFrame(loop);
 </script>
