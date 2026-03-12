@@ -120,13 +120,16 @@
         }
 
         #game-over-ui {
-            position:absolute; top:8%; left:50%; transform:translateX(-50%);
+            position:absolute; top:0; left:50%; transform:translateX(-50%);
             width:290px; max-width:92%;
             display:none; flex-direction:column; align-items:center;
             z-index:20; pointer-events:none;
         }
         .go-title   { color:#fff; font-size:32px; font-weight:bold; margin-bottom:3px; text-shadow:0 0 15px #f0f; }
-        .go-score   { color:#0ff; font-size:16px; margin-bottom:12px; text-shadow:0 0 8px #0ff; }
+        .go-score-label { color:#aaa; font-size:13px; text-transform:uppercase; letter-spacing:2px; margin-top:6px; }
+        .go-score-value { color:#0ff; font-size:20px; font-weight:bold; text-shadow:0 0 8px #0ff; margin-bottom:4px; }
+        #go-score-block { display:flex; justify-content:center; gap:30px; width:100%; margin-bottom:10px; }
+        #go-left, #go-right { text-align:center; }
         .replay-btn { color:#fff; font-size:16px; margin-bottom:12px; font-weight:bold; text-shadow:0 0 10px #0ff; animation:blinkAnim 1.5s ease-in-out infinite; }
         @keyframes blinkAnim { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.95)} }
         #leaderboard { width:100%; background:rgba(20,20,20,0.95); border:2px solid #0ff; color:#fff; padding:10px; text-align:center; box-shadow:0 0 20px rgba(0,255,255,0.3); }
@@ -135,14 +138,14 @@
             width:404px; height:40px;
             background:#000; border:2px solid #444; border-top:2px solid #888;
             position:relative; overflow:hidden;
-            display:flex; align-items:center; padding-left:10px;
-            transition:filter 0.5s ease; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            transition:filter 0.5s ease;
         }
-        #yt-logo { width:20px; height:14px; background:#f00; border-radius:4px; display:flex; align-items:center; justify-content:center; margin-right:10px; flex-shrink:0; z-index:2; }
-        #yt-logo::after { content:""; border-left:5px solid #fff; border-top:3px solid transparent; border-bottom:3px solid transparent; }
-        #ad-text { white-space:nowrap; color:#ffd700; font-weight:bold; font-size:11px; transform:translateX(360px); }
-        .blink-fast { animation:blinker .4s step-start infinite; color:#fff !important; }
-        @keyframes blinker { 50%{opacity:0} }
+        #game-title {
+            color:#f0f; font-size:16px; font-weight:bold; letter-spacing:4px;
+            text-shadow:0 0 10px #f0f, 0 0 20px #f0f;
+            font-family:'Courier New',monospace;
+        }
 
         .dimmed { filter:brightness(0.3) blur(2px); pointer-events:none; }
 
@@ -152,7 +155,7 @@
             font-size:22px; font-weight:bold; color:#fff;
             text-shadow:0 0 20px #0ff; opacity:0;
             pointer-events:none; text-align:center;
-            transition:opacity 0.4s;
+            white-space:nowrap; transition:opacity 0.4s;
         }
     </style>
 </head>
@@ -177,7 +180,16 @@
             <div id="powerup-announce"></div>
             <div id="game-over-ui">
                 <div class="go-title">GAME OVER</div>
-                <div class="go-score" id="go-score-line"></div>
+                <div id="go-score-block">
+                    <div id="go-left">
+                        <div class="go-score-label">SCORE</div>
+                        <div class="go-score-value" id="go-score-val">0</div>
+                    </div>
+                    <div id="go-right" style="display:none">
+                        <div class="go-score-label">BEST COMBO</div>
+                        <div class="go-score-value" id="go-combo-val" style="color:#ff0;text-shadow:0 0 8px #ff0;"></div>
+                    </div>
+                </div>
                 <div class="replay-btn">TAP TO REPLAY</div>
                 <div id="leaderboard">
                     <h3 style="margin-top:0;color:#f0f;font-size:16px;">BEST PLAYERS</h3>
@@ -186,8 +198,7 @@
             </div>
         </div>
         <div id="ad-container">
-            <div id="yt-logo"></div>
-            <div id="ad-text"></div>
+            <span id="game-title">NEON BOUNCE</span>
         </div>
     </div>
 
@@ -232,7 +243,8 @@
     var bestScoreEl   = document.getElementById("bestScore");
     var scoreboard    = document.getElementById("scoreboard");
     var gameOverUI    = document.getElementById("game-over-ui");
-    var goScoreLine   = document.getElementById("go-score-line");
+    var goScoreVal    = document.getElementById("go-score-val");
+    var goComboVal    = document.getElementById("go-combo-val");
     var nickOverlay   = document.getElementById("nick-overlay");
     var nickInput     = document.getElementById("nick-input");
     var adContainer   = document.getElementById("ad-container");
@@ -262,31 +274,8 @@
     });
 
     // ── REKLAMA ───────────────────────────────────────────────────────
-    var myVideos = ["L3JZS2R_D6k","BJU6OyDPMEY","BzM9CYuPW8M"];
-    var adTexts  = ["Build LEGO Cars!","Epic MOCs!"];
-    var adTextEl = document.getElementById("ad-text");
-    var isAdRunning = false;
-    function openRandomVideo() {
-        window.open("https://www.youtube.com/watch?v="+myVideos[Math.floor(Math.random()*myVideos.length)],"_blank");
-    }
-    adContainer.addEventListener("click", openRandomVideo);
-    adContainer.addEventListener("touchend", function(e){ e.preventDefault(); openRandomVideo(); }, {passive:false});
-    function runAdCycle() {
-        if (isAdRunning) return; isAdRunning = true;
-        adTextEl.innerText = adTexts[Math.floor(Math.random()*adTexts.length)];
-        adTextEl.style.transition = "transform 4s linear";
-        adTextEl.style.transform = "translateX(5px)";
-        setTimeout(function(){
-            adTextEl.innerText = "CLICK TO WATCH!"; adTextEl.classList.add("blink-fast");
-            setTimeout(function(){
-                adTextEl.classList.remove("blink-fast");
-                adTextEl.style.transition = "none";
-                adTextEl.style.transform = "translateX(360px)";
-                isAdRunning = false;
-            }, 4000);
-        }, 4200);
-    }
-    setTimeout(runAdCycle, 3000); setInterval(runAdCycle, 30000);
+
+
 
     // ── AUDIO ─────────────────────────────────────────────────────────
     var audioCtx = null;
@@ -730,7 +719,7 @@
                     sfx.milestone();
                     flash('#f0f',0.4);
                     explode(ball.x,ball.y,'#f0f',15);
-                    announceText('★ '+score+' POINTS! ★','#f0f');
+                    announceText(score+' POINTS!','#f0f');
                 }
 
                 if (score>bestScore) {
@@ -743,14 +732,56 @@
     }
 
     // ── GAME OVER ─────────────────────────────────────────────────────
+    // ── ADMOB ─────────────────────────────────────────────────────────
+    var deathCount = 0;
+
+    async function initAdMob() {
+        try {
+            const { AdMob } = window.Capacitor.Plugins;
+            await AdMob.initialize({ initializeForTesting: true });
+            await prepareInterstitial();
+        } catch(e) { console.log('AdMob init error:', e); }
+    }
+
+    async function prepareInterstitial() {
+        try {
+            const { AdMob } = window.Capacitor.Plugins;
+            await AdMob.prepareInterstitial({
+                adId: 'ca-app-pub-3940256099942544/1033173712' // testowe ID
+            });
+        } catch(e) { console.log('AdMob prepare error:', e); }
+    }
+
+    async function showInterstitialIfNeeded() {
+        deathCount++;
+        if (deathCount % 5 !== 0) return;
+        try {
+            const { AdMob } = window.Capacitor.Plugins;
+            await AdMob.showInterstitial();
+            await prepareInterstitial(); // przygotuj następną
+        } catch(e) { console.log('AdMob show error:', e); }
+    }
+
+    // Uruchom AdMob gdy Capacitor gotowy
+    document.addEventListener('deviceready', initAdMob);
+    if (window.Capacitor) initAdMob();
+
     function gameOver() {
         if (STATE !== "PLAYING") return;
-        STATE = "DYING"; // zablokuj input podczas animacji
+        STATE = "DYING";
+        showInterstitialIfNeeded(); // zablokuj input podczas animacji
         sfx.hit(); flash('#f00',0.5);
         explode(ball.x,ball.y,ball.color,25);
         shieldActive=false; slowActive=false; turboActive=false; scoreMultiplier=1;
         combo=0; ball.trailColor="#f0f"; comboHUD.alpha=0;
-        goScoreLine.innerText = "Score: "+score+(maxCombo>=3?" | Best combo: x"+maxCombo:"");
+        goScoreVal.innerText = score;
+        var goRight = document.getElementById("go-right");
+        if (maxCombo >= 3) {
+            goRight.style.display = "block";
+            goComboVal.innerText = "x" + maxCombo;
+        } else {
+            goRight.style.display = "none";
+        }
         setTimeout(function(){
             canvas.classList.add('dimmed');
             scoreboard.classList.add('dimmed');
