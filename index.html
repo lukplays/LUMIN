@@ -83,15 +83,7 @@
             cursor:pointer; border-radius:4px; min-width:140px; min-height:48px;
         }
 
-        /* ── CHANGE NICK ── */
-        #change-nick-btn {
-            position:fixed; top:8px; right:8px;
-            background:transparent; border:1px solid #555; color:#888;
-            font-size:10px; padding:4px 8px; cursor:pointer;
-            font-family:'Courier New',monospace; z-index:50; border-radius:3px;
-            transition: color 0.2s, border-color 0.2s;
-        }
-        #change-nick-btn:hover { color:#fff; border-color:#fff; }
+
 
         /* ── GAME WRAPPER ── */
         #game-wrapper { position:absolute; top:0; left:0; transform-origin:top left; }
@@ -167,7 +159,6 @@
         <button id="start-btn">ENGAGE</button>
     </div>
 
-    <button id="change-nick-btn">✎ NICK</button>
 
     <div id="game-wrapper">
         <div id="scoreboard" style="position:relative;">
@@ -239,6 +230,18 @@
     // ── DOM ───────────────────────────────────────────────────────────
     var canvas        = document.getElementById("gameCanvas");
     var ctx           = canvas.getContext("2d", {alpha:false});
+    // ── MUZYKA ────────────────────────────────────────────────────────
+    var bgMusic = new Audio("mfcc-retro-arcade-game-music-297305.mp3");
+    bgMusic.loop = true;
+    bgMusic.volume = 0.28;
+    var musicStarted = false;
+    function startMusic() {
+        if (!musicStarted) {
+            musicStarted = true;
+            bgMusic.play().catch(function(){});
+        }
+    }
+
     var scoreEl       = document.getElementById("currentScore");
     var bestScoreEl   = document.getElementById("bestScore");
     var scoreboard    = document.getElementById("scoreboard");
@@ -267,11 +270,6 @@
     }
     document.getElementById("start-btn").addEventListener("click", doStart);
     nickInput.addEventListener("keydown", function(e){ if(e.key==="Enter") doStart(); });
-
-    document.getElementById("change-nick-btn").addEventListener("click", function(){
-        nickOverlay.style.display = "flex";
-        STATE = "NICK";
-    });
 
     // ── REKLAMA ───────────────────────────────────────────────────────
 
@@ -769,6 +767,7 @@
     function gameOver() {
         if (STATE !== "PLAYING") return;
         STATE = "DYING";
+        bgMusic.pause();
         showInterstitialIfNeeded(); // zablokuj input podczas animacji
         sfx.hit(); flash('#f00',0.5);
         explode(ball.x,ball.y,ball.color,25);
@@ -794,6 +793,7 @@
 
     // ── INPUT ─────────────────────────────────────────────────────────
     function handleAction(e) {
+        startMusic();
         if(STATE === "NICK") return;
         if(e && e.cancelable) e.preventDefault();           // overlay widoczny — ignoruj
         if(STATE === "WAIT_TAP") {             // czeka na pierwszy tap
@@ -809,6 +809,8 @@
             canvas.classList.remove('dimmed');
             scoreboard.classList.remove('dimmed');
             adContainer.classList.remove('dimmed');
+            bgMusic.currentTime = 0;
+            bgMusic.play().catch(function(){});
             ball.x=100; ball.y=300; ball.vel=0;
             pipes=[]; powerups=[]; score=0; scoreEl.innerText="0";
             combo=0; maxCombo=0; ball.trailColor="#f0f"; comboHUD.alpha=0;
