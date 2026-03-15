@@ -72,6 +72,20 @@
             z-index:9999;
         }
         #nick-overlay h2 { color:#0ff; letter-spacing:2px; font-size:18px; margin-bottom:20px; }
+        #nick-overlay .game-title {
+            font-size:42px; font-weight:bold; letter-spacing:6px;
+            font-family:'Courier New',monospace;
+            color:#fff;
+            text-shadow: 0 0 10px #f0f, 0 0 25px #f0f, 0 0 50px #f0f;
+            margin-bottom:8px;
+            text-align:center; width:100%;
+        }
+        #nick-overlay .game-subtitle {
+            font-size:12px; letter-spacing:4px; color:#888;
+            font-family:'Courier New',monospace;
+            margin-bottom:30px;
+            text-align:center; width:100%;
+        }
         #nick-input {
             background:#111; border:2px solid #f0f; color:#fff;
             padding:12px; font-size:20px; text-align:center;
@@ -154,6 +168,8 @@
 <body>
 
     <div id="nick-overlay">
+        <div class="game-title">NEON BOUNCE</div>
+        <div class="game-subtitle">TAP TO SURVIVE</div>
         <h2>YOUR NICKNAME</h2>
         <input type="text" id="nick-input" placeholder="Enter Nick..." maxlength="15" autocomplete="off" autocorrect="off" spellcheck="false">
         <button id="start-btn">ENGAGE</button>
@@ -736,7 +752,7 @@
     async function initAdMob() {
         try {
             const { AdMob } = window.Capacitor.Plugins;
-            await AdMob.initialize({ initializeForTesting: true });
+            await AdMob.initialize({ initializeForTesting: false });
             await prepareInterstitial();
         } catch(e) { console.log('AdMob init error:', e); }
     }
@@ -745,7 +761,7 @@
         try {
             const { AdMob } = window.Capacitor.Plugins;
             await AdMob.prepareInterstitial({
-                adId: 'ca-app-pub-3940256099942544/1033173712' // testowe ID
+                adId: 'ca-app-pub-5393846471178271~3467080442' // testowe ID
             });
         } catch(e) { console.log('AdMob prepare error:', e); }
     }
